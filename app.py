@@ -43,7 +43,7 @@ def criar_evento_google_calendar(service, info_evento):
         'useDefault': False,
         'overrides': [{'method': 'popup', 'minutes': m} for m in info_evento['lembretes_minutos']]
     }
-    
+
     # Adicionar o local de forma mais detalhada
     local = info_evento['local']
     if info_evento['endereco']:
@@ -77,7 +77,7 @@ def criar_evento_google_calendar(service, info_evento):
         st.error(f"Ocorreu um erro: {e}")
         return None
 
-# --- Seu app continua igual abaixo ---
+# --- App Streamlit ---
 st.set_page_config(page_title="Sistema de Agendamentos", layout="centered")
 st.title("📅 Sistema de Agendamento com Google Calendar")
 
