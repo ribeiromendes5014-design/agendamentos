@@ -35,26 +35,28 @@ def get_google_calendar_service():
 
 def criar_evento_google_calendar(service, info_evento):
     tz = pytz.timezone('America/Sao_Paulo')
-    data_hora_aware = tz.localize(info_evento['data_hora'])
-    data_hora_fim_aware = data_hora_aware + timedelta(minutes=info_evento['duracao'])
+    data_hora_inicio_aware = tz.localize(info_evento['data_hora_inicio'])
+    data_hora_fim_aware = tz.localize(info_evento['data_hora_fim'])
 
     # Configurar lembretes
     reminders = {
         'useDefault': False,
-        'overrides': [
-            {'method': 'email', 'minutes': info_evento['lembrete_minutos']},
-            {'method': 'popup', 'minutes': info_evento['lembrete_minutos']},
-        ],
+        'overrides': [{'method': 'popup', 'minutes': m} for m in info_evento['lembretes_minutos']]
     }
+    
+    # Adicionar o local de forma mais detalhada
+    local = info_evento['local']
+    if info_evento['endereco']:
+        local = f"{info_evento['local']} ({info_evento['endereco']})"
 
     evento = {
         'summary': f"{info_evento['tipo_servico']} - {info_evento['cliente']}",
-        'location': info_evento['local'],
+        'location': local,
         'description': f"Valor total: R${info_evento['valor_total']:.2f}\n"
                        f"Entrada: R${info_evento['valor_entrada']:.2f}\n"
                        f"Forma de pagamento: {info_evento['forma_pagamento']}\n",
         'start': {
-            'dateTime': data_hora_aware.isoformat(),
+            'dateTime': data_hora_inicio_aware.isoformat(),
             'timeZone': 'America/Sao_Paulo',
         },
         'end': {
@@ -84,19 +86,19 @@ service = get_google_calendar_service()
 if service:
     st.subheader("Informações do Agendamento")
     cliente = st.text_input("👤 Nome do Cliente")
-    tipo_servico = st.selectbox("🛠 Tipo de Serviço", ["Fotos", "Consultoria", "Outro"])
-    
-    duracao = 0
-    if tipo_servico == "Fotos":
-        quantidade_fotos = st.number_input("📷 Quantidade de Fotos", min_value=1, step=1)
-        duracao = quantidade_fotos * 5
-    else:
-        duracao = st.number_input("⏱ Duração do Serviço (minutos)", min_value=15, step=15)
+    tipo_servico = st.text_input("🛠 Tipo de Serviço (ex: Sessão de Fotos, Consultoria)")
     
     local = st.text_input("📍 Local")
-    data = st.date_input("📆 Data")
-    hora = st.time_input("⏰ Horário")
+    endereco = st.text_input("Endereço completo (opcional)")
     
+    col1, col2 = st.columns(2)
+    with col1:
+        data_inicio = st.date_input("📆 Data de Início")
+        hora_inicio = st.time_input("⏰ Horário de Início")
+    with col2:
+        data_fim = st.date_input("📆 Data de Fim")
+        hora_fim = st.time_input("⏰ Horário de Fim")
+
     st.subheader("Lembretes")
     lembrete_opcoes = {
         "15 minutos antes": 15,
@@ -105,8 +107,8 @@ if service:
         "2 horas antes": 120,
         "1 dia antes": 1440
     }
-    lembrete_texto = st.selectbox("🔔 Quero ser alertado:", list(lembrete_opcoes.keys()))
-    lembrete_minutos = lembrete_opcoes[lembrete_texto]
+    lembretes_selecionados = st.multiselect("🔔 Quero ser alertado:", list(lembrete_opcoes.keys()), default=["15 minutos antes"])
+    lembretes_minutos = [lembrete_opcoes[l] for l in lembretes_selecionados]
 
     st.subheader("Informações Financeiras")
     valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, step=10.0)
@@ -115,29 +117,36 @@ if service:
     valor_entrada = 0.0
     forma_pagamento = "Não houve entrada"
     
-    # Condição para mostrar os campos da entrada
     if entrada:
         valor_entrada = st.number_input("💵 Valor da Entrada (R$)", min_value=0.0, max_value=valor_total, step=10.0)
         forma_pagamento = st.selectbox("💳 Forma de Pagamento", ["Pix", "Dinheiro", "Cartão", "Transferência", "Outro"])
 
     if st.button("Agendar"):
+        data_hora_inicio = datetime.combine(data_inicio, hora_inicio)
+        data_hora_fim = datetime.combine(data_fim, hora_fim)
+        
+        # Validar campos
         if not cliente:
             st.error("O campo 'Nome do Cliente' é obrigatório.")
+        elif not tipo_servico:
+            st.error("O campo 'Tipo de Serviço' é obrigatório.")
         elif not local:
             st.error("O campo 'Local' é obrigatório.")
+        elif data_hora_inicio >= data_hora_fim:
+            st.error("A data/hora de início deve ser anterior à data/hora de fim.")
         else:
-            data_hora = datetime.combine(data, hora)
-
             dados = {
                 "cliente": cliente,
                 "tipo_servico": tipo_servico,
-                "duracao": duracao,
+                "duracao": (data_hora_fim - data_hora_inicio).total_seconds() / 60,
                 "local": local,
-                "data_hora": data_hora,
+                "endereco": endereco,
+                "data_hora_inicio": data_hora_inicio,
+                "data_hora_fim": data_hora_fim,
                 "valor_total": valor_total,
                 "valor_entrada": valor_entrada,
                 "forma_pagamento": forma_pagamento,
-                "lembrete_minutos": lembrete_minutos
+                "lembretes_minutos": lembretes_minutos
             }
             
             link_evento = criar_evento_google_calendar(service, dados)
@@ -146,15 +155,17 @@ if service:
                 st.markdown(f"[📅 Ver no Google Calendar]({link_evento})")
 
                 linha = {
-                    "Data e Hora": data_hora.strftime("%Y-%m-%d %H:%M"),
+                    "Data e Hora Início": data_hora_inicio.strftime("%Y-%m-%d %H:%M"),
+                    "Data e Hora Fim": data_hora_fim.strftime("%Y-%m-%d %H:%M"),
                     "Cliente": cliente,
                     "Serviço": tipo_servico,
-                    "Duração (min)": duracao,
+                    "Duração (min)": dados["duracao"],
                     "Local": local,
+                    "Endereço": endereco,
                     "Valor Total": valor_total,
                     "Entrada": valor_entrada,
                     "Forma de Pagamento": forma_pagamento,
-                    "Link do Evento": link_evento
+                    "Link do Evento": link_evento,
                 }
 
                 arquivo_csv = "agendamentos.csv"
