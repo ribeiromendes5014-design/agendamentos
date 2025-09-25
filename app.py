@@ -50,7 +50,7 @@ def criar_evento_google_calendar(service, info_evento):
     }
 
     try:
-        calendar_id = 'ribeiromendes5016@gmail.com'  # ou o ID do calendário que você compartilhou com a conta de serviço
+        calendar_id = 'ribeiromendes5016@gmail.com'  # calendário onde o evento será criado
         evento_criado = service.events().insert(calendarId=calendar_id, body=evento).execute()
         return evento_criado.get('htmlLink')
     except HttpError as error:
@@ -142,4 +142,3 @@ if service:
                 df_novo.to_csv(arquivo_csv, index=False)
 else:
     st.warning("Erro na autenticação com Google Calendar. Verifique suas credenciais e permissões do calendário.")
-
