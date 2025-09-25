@@ -35,15 +35,23 @@ def get_google_calendar_service():
             creds.refresh(Request())
         else:
             # Carrega as credenciais diretamente dos secrets do Streamlit
-            if "credentials" not in st.secrets:
+            if "google_credentials" not in st.secrets:
                 st.error("❌ Credenciais do Google não encontradas nos secrets do Streamlit. Por favor, configure o arquivo secrets.toml.")
                 return None
             
-            # Converte a string JSON para um dicionário Python
-            info_credenciais = json.loads(st.secrets["credentials"])
+            # Cria um arquivo temporário com as credenciais para o fluxo OAuth
+            import tempfile
+            creds_json_str = st.secrets["google_credentials"]
+            with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as temp_cred_file:
+                temp_cred_file.write(creds_json_str)
+                temp_cred_file.flush()
+                temp_cred_path = temp_cred_file.name
             
-            flow = InstalledAppFlow.from_client_secrets_file(info_credenciais, SCOPES)
-            creds = flow.run_local_server(port=0) 
+            flow = InstalledAppFlow.from_client_secrets_file(temp_cred_path, SCOPES)
+            creds = flow.run_local_server(port=0)
+            
+            # Remove o arquivo temporário após uso
+            os.remove(temp_cred_path)
 
         # Salva as credenciais para a próxima execução
         with open(TOKEN_FILE, 'wb') as token:
