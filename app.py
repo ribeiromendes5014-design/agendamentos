@@ -10,10 +10,12 @@ from googleapiclient.discovery import build
 # ========== Função para criar evento no Google Calendar ==========
 def criar_evento_google_calendar(info_evento):
     SCOPES = ['https://www.googleapis.com/auth/calendar']
-    SERVICE_ACCOUNT_FILE = 'credenciais.json'
 
-    credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    # Pega credenciais do secrets do Streamlit
+    service_account_info = st.secrets["google_service_account"]
+
+    credentials = service_account.Credentials.from_service_account_info(
+        service_account_info, scopes=SCOPES)
 
     service = build('calendar', 'v3', credentials=credentials)
 
