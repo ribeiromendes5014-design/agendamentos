@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import os
 import pickle
+import json
 
 # Google Calendar
 from google.auth.transport.requests import Request
@@ -14,7 +15,6 @@ from googleapiclient.errors import HttpError
 
 # Se alterar esses SCOPES, apague o arquivo token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/calendar'] 
-CREDENTIALS_FILE = 'credentials.json'
 TOKEN_FILE = 'token.pickle'
 API_SERVICE_NAME = 'calendar'
 API_VERSION = 'v3'
@@ -34,11 +34,15 @@ def get_google_calendar_service():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            if not os.path.exists(CREDENTIALS_FILE):
-                st.error("❌ Arquivo 'credentials.json' não encontrado. Por favor, coloque-o na mesma pasta do script.")
+            # Carrega as credenciais diretamente dos secrets do Streamlit
+            if "credentials" not in st.secrets:
+                st.error("❌ Credenciais do Google não encontradas nos secrets do Streamlit. Por favor, configure o arquivo secrets.toml.")
                 return None
-                
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+            
+            # Converte a string JSON para um dicionário Python
+            info_credenciais = json.loads(st.secrets["credentials"])
+            
+            flow = InstalledAppFlow.from_client_secrets_file(info_credenciais, SCOPES)
             creds = flow.run_local_server(port=0) 
 
         # Salva as credenciais para a próxima execução
