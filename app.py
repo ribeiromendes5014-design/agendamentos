@@ -38,6 +38,15 @@ def criar_evento_google_calendar(service, info_evento):
     data_hora_aware = tz.localize(info_evento['data_hora'])
     data_hora_fim_aware = data_hora_aware + timedelta(minutes=info_evento['duracao'])
 
+    # Configurar lembretes
+    reminders = {
+        'useDefault': False,
+        'overrides': [
+            {'method': 'email', 'minutes': info_evento['lembrete_minutos']},
+            {'method': 'popup', 'minutes': info_evento['lembrete_minutos']},
+        ],
+    }
+
     evento = {
         'summary': f"{info_evento['tipo_servico']} - {info_evento['cliente']}",
         'location': info_evento['local'],
@@ -52,10 +61,11 @@ def criar_evento_google_calendar(service, info_evento):
             'dateTime': data_hora_fim_aware.isoformat(),
             'timeZone': 'America/Sao_Paulo',
         },
+        'reminders': reminders,
     }
 
     try:
-        calendar_id = 'ribeiromendes5016@gmail.com'  # calendário onde o evento será criado
+        calendar_id = 'ribeiromendes5016@gmail.com'
         evento_criado = service.events().insert(calendarId=calendar_id, body=evento).execute()
         return evento_criado.get('htmlLink')
     except HttpError as error:
@@ -66,42 +76,51 @@ def criar_evento_google_calendar(service, info_evento):
         return None
 
 # --- Seu app continua igual abaixo ---
-
 st.set_page_config(page_title="Sistema de Agendamentos", layout="centered")
 st.title("📅 Sistema de Agendamento com Google Calendar")
 
 service = get_google_calendar_service()
 
 if service:
-    with st.form("form_agendamento"):
-        st.subheader("Informações do Agendamento")
-        cliente = st.text_input("👤 Nome do Cliente")
-        tipo_servico = st.selectbox("🛠 Tipo de Serviço", ["Fotos", "Consultoria", "Outro"])
+    st.subheader("Informações do Agendamento")
+    cliente = st.text_input("👤 Nome do Cliente")
+    tipo_servico = st.selectbox("🛠 Tipo de Serviço", ["Fotos", "Consultoria", "Outro"])
+    
+    duracao = 0
+    if tipo_servico == "Fotos":
+        quantidade_fotos = st.number_input("📷 Quantidade de Fotos", min_value=1, step=1)
+        duracao = quantidade_fotos * 5
+    else:
+        duracao = st.number_input("⏱ Duração do Serviço (minutos)", min_value=15, step=15)
+    
+    local = st.text_input("📍 Local")
+    data = st.date_input("📆 Data")
+    hora = st.time_input("⏰ Horário")
+    
+    st.subheader("Lembretes")
+    lembrete_opcoes = {
+        "15 minutos antes": 15,
+        "30 minutos antes": 30,
+        "1 hora antes": 60,
+        "2 horas antes": 120,
+        "1 dia antes": 1440
+    }
+    lembrete_texto = st.selectbox("🔔 Quero ser alertado:", list(lembrete_opcoes.keys()))
+    lembrete_minutos = lembrete_opcoes[lembrete_texto]
 
-        duracao = 0
-        if tipo_servico == "Fotos":
-            quantidade_fotos = st.number_input("📷 Quantidade de Fotos", min_value=1, step=1, key="fotos_input")
-            duracao = quantidade_fotos * 5
-        else:
-            duracao = st.number_input("⏱ Duração do Serviço (minutos)", min_value=15, step=15, key="duracao_input")
+    st.subheader("Informações Financeiras")
+    valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, step=10.0)
+    
+    entrada = st.checkbox("✅ Houve entrada de dinheiro?")
+    valor_entrada = 0.0
+    forma_pagamento = "Não houve entrada"
+    
+    # Condição para mostrar os campos da entrada
+    if entrada:
+        valor_entrada = st.number_input("💵 Valor da Entrada (R$)", min_value=0.0, max_value=valor_total, step=10.0)
+        forma_pagamento = st.selectbox("💳 Forma de Pagamento", ["Pix", "Dinheiro", "Cartão", "Transferência", "Outro"])
 
-        local = st.text_input("📍 Local")
-        data = st.date_input("📆 Data")
-        hora = st.time_input("⏰ Horário")
-
-        st.subheader("Informações Financeiras")
-        valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, step=10.0)
-
-        entrada = st.checkbox("✅ Houve entrada de dinheiro?")
-        valor_entrada = 0.0
-        forma_pagamento = ""
-        if entrada:
-            valor_entrada = st.number_input("💵 Valor da Entrada (R$)", min_value=0.0, max_value=valor_total, step=10.0, key="entrada_input")
-            forma_pagamento = st.selectbox("💳 Forma de Pagamento", ["Pix", "Dinheiro", "Cartão", "Transferência", "Outro"], key="pagamento_input")
-
-        submitted = st.form_submit_button("Agendar")
-
-    if submitted:
+    if st.button("Agendar"):
         if not cliente:
             st.error("O campo 'Nome do Cliente' é obrigatório.")
         elif not local:
@@ -117,9 +136,10 @@ if service:
                 "data_hora": data_hora,
                 "valor_total": valor_total,
                 "valor_entrada": valor_entrada,
-                "forma_pagamento": forma_pagamento
+                "forma_pagamento": forma_pagamento,
+                "lembrete_minutos": lembrete_minutos
             }
-
+            
             link_evento = criar_evento_google_calendar(service, dados)
             if link_evento:
                 st.success("✅ Agendamento criado com sucesso no Google Calendar!")
