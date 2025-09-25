@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import os
 import json
+import pytz
 
 # Google Calendar
 from google.oauth2 import service_account
@@ -33,6 +34,10 @@ def get_google_calendar_service():
         return None
 
 def criar_evento_google_calendar(service, info_evento):
+    tz = pytz.timezone('America/Sao_Paulo')
+    data_hora_aware = tz.localize(info_evento['data_hora'])
+    data_hora_fim_aware = data_hora_aware + timedelta(minutes=info_evento['duracao'])
+
     evento = {
         'summary': f"{info_evento['tipo_servico']} - {info_evento['cliente']}",
         'location': info_evento['local'],
@@ -40,11 +45,11 @@ def criar_evento_google_calendar(service, info_evento):
                        f"Entrada: R${info_evento['valor_entrada']:.2f}\n"
                        f"Forma de pagamento: {info_evento['forma_pagamento']}\n",
         'start': {
-            'dateTime': info_evento['data_hora'].isoformat(),
+            'dateTime': data_hora_aware.isoformat(),
             'timeZone': 'America/Sao_Paulo',
         },
         'end': {
-            'dateTime': (info_evento['data_hora'] + timedelta(minutes=info_evento['duracao'])).isoformat(),
+            'dateTime': data_hora_fim_aware.isoformat(),
             'timeZone': 'America/Sao_Paulo',
         },
     }
