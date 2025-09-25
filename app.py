@@ -17,10 +17,8 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 def get_google_calendar_service():
     """Autentica usando a conta de serviço do secrets e retorna o serviço do Google Calendar."""
     try:
-        # Carregar credenciais do secrets
         service_account_info = st.secrets["google_service_account"]
 
-        # Converter para dict caso esteja em string JSON
         if isinstance(service_account_info, str):
             service_account_info = json.loads(service_account_info)
 
@@ -38,23 +36,30 @@ def criar_evento_google_calendar(service, info_evento):
     data_hora_inicio_aware = tz.localize(info_evento['data_hora_inicio'])
     data_hora_fim_aware = tz.localize(info_evento['data_hora_fim'])
 
-    # Configurar lembretes
+    # Reminders configuráveis
+    overrides = []
+    for m in info_evento['lembretes_minutos']:
+        try:
+            minutos = int(m)
+            overrides.append({'method': 'popup', 'minutes': minutos})
+        except Exception:
+            continue
+
     reminders = {
         'useDefault': False,
-        'overrides': [{'method': 'popup', 'minutes': m} for m in info_evento['lembretes_minutos']]
+        'overrides': overrides
     }
 
-    # Adicionar o local de forma mais detalhada
     local = info_evento['local']
     if info_evento['endereco']:
-        local = f"{info_evento['local']} ({info_evento['endereco']})"
+        local = f"{local} ({info_evento['endereco']})"
 
     evento = {
         'summary': f"{info_evento['tipo_servico']} - {info_evento['cliente']}",
         'location': local,
         'description': f"Valor total: R${info_evento['valor_total']:.2f}\n"
                        f"Entrada: R${info_evento['valor_entrada']:.2f}\n"
-                       f"Forma de pagamento: {info_evento['forma_pagamento']}\n",
+                       f"Forma de pagamento: {info_evento['forma_pagamento']}",
         'start': {
             'dateTime': data_hora_inicio_aware.isoformat(),
             'timeZone': 'America/Sao_Paulo',
@@ -63,7 +68,7 @@ def criar_evento_google_calendar(service, info_evento):
             'dateTime': data_hora_fim_aware.isoformat(),
             'timeZone': 'America/Sao_Paulo',
         },
-        'reminders': reminders,
+        'reminders': reminders
     }
 
     try:
@@ -107,7 +112,11 @@ if service:
         "2 horas antes": 120,
         "1 dia antes": 1440
     }
-    lembretes_selecionados = st.multiselect("🔔 Quero ser alertado:", list(lembrete_opcoes.keys()), default=["15 minutos antes"])
+    lembretes_selecionados = st.multiselect(
+        "🔔 Quero ser alertado:",
+        list(lembrete_opcoes.keys()),
+        default=["15 minutos antes"]
+    )
     lembretes_minutos = [lembrete_opcoes[l] for l in lembretes_selecionados]
 
     st.subheader("Informações Financeiras")
@@ -125,7 +134,7 @@ if service:
         data_hora_inicio = datetime.combine(data_inicio, hora_inicio)
         data_hora_fim = datetime.combine(data_fim, hora_fim)
         
-        # Validar campos
+        # Validações
         if not cliente:
             st.error("O campo 'Nome do Cliente' é obrigatório.")
         elif not tipo_servico:
