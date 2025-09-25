@@ -3,72 +3,28 @@ import streamlit as st
 from datetime import datetime, timedelta
 import pandas as pd
 import os
-import pickle
-import json
 
 # Google Calendar
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# Se alterar esses SCOPES, apague o arquivo token.pickle.
-SCOPES = ['https://www.googleapis.com/auth/calendar'] 
-TOKEN_FILE = 'token.pickle'
-API_SERVICE_NAME = 'calendar'
-API_VERSION = 'v3'
+# Escopo para acessar o Google Calendar
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+SERVICE_ACCOUNT_FILE = 'service_account.json'  # arquivo salvo localmente
 
-# ========== Função para obter o serviço da API do Google Calendar ==========
 def get_google_calendar_service():
-    """Realiza a autenticação e retorna o objeto de serviço da API do Google Calendar."""
-    creds = None
-    
-    # O arquivo token.pickle armazena os tokens do usuário e é criado automaticamente.
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, 'rb') as token:
-            creds = pickle.load(token)
+    """Autentica usando a conta de serviço e retorna o serviço do Google Calendar."""
+    try:
+        creds = service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+        service = build('calendar', 'v3', credentials=creds)
+        return service
+    except Exception as e:
+        st.error(f"Erro ao autenticar com a conta de serviço: {e}")
+        return None
 
-    # Se não houver credenciais válidas, permite que o usuário faça login.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            # Carrega as credenciais diretamente dos secrets do Streamlit
-            if "google_credentials" not in st.secrets:
-                st.error("❌ Credenciais do Google não encontradas nos secrets do Streamlit. Por favor, configure o arquivo secrets.toml.")
-                return None
-            
-            # Cria um arquivo temporário com as credenciais para o fluxo OAuth
-            import tempfile
-            creds_json_str = st.secrets["google_credentials"]
-            with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as temp_cred_file:
-                temp_cred_file.write(creds_json_str)
-                temp_cred_file.flush()
-                temp_cred_path = temp_cred_file.name
-            
-            flow = InstalledAppFlow.from_client_secrets_file(temp_cred_path, SCOPES)
-            creds = flow.run_local_server(port=0)
-            
-            # Remove o arquivo temporário após uso
-            os.remove(temp_cred_path)
-
-        # Salva as credenciais para a próxima execução
-        with open(TOKEN_FILE, 'wb') as token:
-            pickle.dump(creds, token)
-            
-    if creds:
-        try:
-            service = build(API_SERVICE_NAME, API_VERSION, credentials=creds)
-            return service
-        except Exception as e:
-            st.error(f"Erro ao construir o serviço da API: {e}")
-            return None
-    return None
-
-# ========== Função para criar evento no Google Calendar ==========
 def criar_evento_google_calendar(service, info_evento):
-    """Cria um evento no Google Calendar usando o serviço autenticado."""
     evento = {
         'summary': f"{info_evento['tipo_servico']} - {info_evento['cliente']}",
         'location': info_evento['local'],
@@ -86,7 +42,7 @@ def criar_evento_google_calendar(service, info_evento):
     }
 
     try:
-        calendar_id = 'primary'
+        calendar_id = 'primary'  # ou o ID do calendário que você compartilhou com a conta de serviço
         evento_criado = service.events().insert(calendarId=calendar_id, body=evento).execute()
         return evento_criado.get('htmlLink')
     except HttpError as error:
@@ -96,11 +52,11 @@ def criar_evento_google_calendar(service, info_evento):
         st.error(f"Ocorreu um erro: {e}")
         return None
 
-# ========== App Streamlit ==========
+# --- Seu app continua igual abaixo ---
+
 st.set_page_config(page_title="Sistema de Agendamentos", layout="centered")
 st.title("📅 Sistema de Agendamento com Google Calendar")
 
-# Tenta obter o serviço autenticado
 service = get_google_calendar_service()
 
 if service:
@@ -132,7 +88,6 @@ if service:
     
         submitted = st.form_submit_button("Agendar")
     
-    # ========== Processamento ==========
     if submitted:
         if not cliente:
             st.error("O campo 'Nome do Cliente' é obrigatório.")
@@ -157,7 +112,6 @@ if service:
                 st.success("✅ Agendamento criado com sucesso no Google Calendar!")
                 st.markdown(f"[📅 Ver no Google Calendar]({link_evento})")
     
-                # Salvar em CSV
                 linha = {
                     "Data e Hora": data_hora.strftime("%Y-%m-%d %H:%M"),
                     "Cliente": cliente,
@@ -179,4 +133,4 @@ if service:
     
                 df_novo.to_csv(arquivo_csv, index=False)
 else:
-    st.warning("Autenticação com o Google Calendar pendente. Por favor, siga as instruções para autorizar o acesso.")
+    st.warning("Erro na autenticação com Google Calendar. Verifique seu arquivo service_account.json e permissões do calendário.")
