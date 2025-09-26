@@ -99,6 +99,7 @@ def enviar_mensagem_telegram_agendamento(cliente, data_hora_inicio, data_hora_fi
     data_fim_fmt = data_hora_fim.strftime('%d/%m/%Y')
     hora_fim_fmt = data_hora_fim.strftime('%H:%M')
 
+    # Montar a mensagem
     mensagem = (
         f"📅 *Novo Agendamento Realizado!*\n\n"
         f"👤 *Cliente:* {cliente}\n"
@@ -109,6 +110,7 @@ def enviar_mensagem_telegram_agendamento(cliente, data_hora_inicio, data_hora_fi
         f"💵 *Entrada:* {valor_entrada_formatado}"
     )
 
+    # Enviar a mensagem para o Telegram
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     data = {
         "chat_id": TELEGRAM_CHAT_ID,
@@ -117,11 +119,12 @@ def enviar_mensagem_telegram_agendamento(cliente, data_hora_inicio, data_hora_fi
         "message_thread_id": TOPICO_ID
     }
 
-    response = requests.post(url, data=data)
-    if response.status_code != 200:
-        st.error(f"Erro ao enviar mensagem para o Telegram: {response.json()}")
-    else:
+    try:
+        response = requests.post(url, data=data)
+        response.raise_for_status()  # Lança exceção se houver erro HTTP
         st.success("📨 Mensagem enviada para o grupo do Telegram!")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erro ao enviar mensagem para o Telegram: {e}")
 
 
 
@@ -246,5 +249,6 @@ if service:
                     df_novo.to_csv(arquivo_csv, index=False)
 else:
     st.warning("Erro na autenticação com Google Calendar. Verifique suas credenciais e permissões do calendário.")
+
 
 
