@@ -114,7 +114,7 @@ if service:
         lembretes_minutos = [lembrete_opcoes[l] for l in lembretes_selecionados]
 
         st.subheader("Informações Financeiras")
-        valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, step=10.0, format="%.2f")
+        valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, value=100.0, step=10.0, format="%.2f")
         
         entrada = st.checkbox("✅ Houve entrada de dinheiro?")
         valor_entrada = 0.0
