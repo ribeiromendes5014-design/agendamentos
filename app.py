@@ -117,18 +117,25 @@ if service:
         valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, value=100.0, step=10.0, format="%.2f")
         
         entrada = st.checkbox("✅ Houve entrada de dinheiro?")
-        valor_entrada = 0.0
-        forma_pagamento = "Não houve entrada"
+        
+        valor_entrada_input = 0.0
+        forma_pagamento_input = "Não houve entrada"
         
         if entrada:
-            valor_entrada = st.number_input("💵 Valor da Entrada (R$)", min_value=0.0, max_value=valor_total, step=10.0, format="%.2f")
-            forma_pagamento = st.selectbox("💳 Forma de Pagamento", ["Pix", "Dinheiro", "Cartão", "Transferência", "Outro"])
+            valor_entrada_input = st.number_input("💵 Valor da Entrada (R$)", min_value=0.0, max_value=valor_total, step=10.0, format="%.2f")
+            forma_pagamento_input = st.selectbox("💳 Forma de Pagamento", ["Pix", "Dinheiro", "Cartão", "Transferência", "Outro"])
 
         submitted = st.form_submit_button("Agendar")
         
         if submitted:
             data_hora_inicio = datetime.combine(data_inicio, hora_inicio)
             data_hora_fim = datetime.combine(data_fim, hora_fim)
+            
+            valor_entrada = 0.0
+            forma_pagamento = "Não houve entrada"
+            if entrada:
+                valor_entrada = valor_entrada_input
+                forma_pagamento = forma_pagamento_input
             
             # Validar campos
             if not cliente:
@@ -181,6 +188,3 @@ if service:
                         df_novo = pd.DataFrame([linha])
 
                     df_novo.to_csv(arquivo_csv, index=False)
-        
-else:
-    st.warning("Erro na autenticação com Google Calendar. Verifique suas credenciais e permissões do calendário.")
