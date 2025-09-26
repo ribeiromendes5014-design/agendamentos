@@ -179,6 +179,7 @@ if service:
 
                 df_novo.to_csv(arquivo_csv, index=False)
             
-            st.experimental_rerun()
+            st.rerun()
 else:
     st.warning("Erro na autenticação com Google Calendar. Verifique suas credenciais e permissões do calendário.")
+
