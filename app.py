@@ -5,7 +5,6 @@ import pandas as pd
 import os
 import json
 import pytz
-import requests
 
 # Google Calendar
 from google.oauth2 import service_account
@@ -14,12 +13,6 @@ from googleapiclient.errors import HttpError
 
 # Escopo para acessar o Google Calendar
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-
-# Configurações Telegram
-TELEGRAM_TOKEN = "8412132908:AAG8N_vFzkpVNX-WN3bwT0Vl3H41Q-9Rfw4"
-TELEGRAM_CHAT_ID = "-1003030758192"
-TOPICO_ID = 64  # ID do tópico (thread) no grupo Telegram
-
 
 def get_google_calendar_service():
     """Autentica usando a conta de serviço do secrets e retorna o serviço do Google Calendar."""
@@ -39,7 +32,6 @@ def get_google_calendar_service():
     except Exception as e:
         st.error(f"Erro ao autenticar com a conta de serviço: {e}")
         return None
-
 
 def criar_evento_google_calendar(service, info_evento):
     tz = pytz.timezone('America/Sao_Paulo')
@@ -86,48 +78,6 @@ def criar_evento_google_calendar(service, info_evento):
     except Exception as e:
         st.error(f"Ocorreu um erro: {e}")
         return None
-
-
-def enviar_mensagem_telegram_agendamento(cliente, data_hora_inicio, data_hora_fim, valor_total, valor_entrada, tipo_servico):
-    # Formatar os valores monetários para padrão brasileiro
-    valor_total_formatado = f"R$ {valor_total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-    valor_entrada_formatado = f"R$ {valor_entrada:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-
-    # Formatar datas e horas
-    data_inicio_fmt = data_hora_inicio.strftime('%d/%m/%Y')
-    hora_inicio_fmt = data_hora_inicio.strftime('%H:%M')
-    data_fim_fmt = data_hora_fim.strftime('%d/%m/%Y')
-    hora_fim_fmt = data_hora_fim.strftime('%H:%M')
-
-    # Montar a mensagem
-    mensagem = (
-        f"📅 *Novo Agendamento Realizado!*\n\n"
-        f"👤 *Cliente:* {cliente}\n"
-        f"🛠 *Serviço:* {tipo_servico}\n"
-        f"📆 *Início:* {data_inicio_fmt} às {hora_inicio_fmt}\n"
-        f"📆 *Fim:* {data_fim_fmt} às {hora_fim_fmt}\n"
-        f"💰 *Valor Total:* {valor_total_formatado}\n"
-        f"💵 *Entrada:* {valor_entrada_formatado}"
-    )
-
-    # Enviar a mensagem para o Telegram
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    data = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": mensagem,
-        "parse_mode": "Markdown",
-        "message_thread_id": TOPICO_ID
-    }
-
-    try:
-        response = requests.post(url, data=data)
-        response.raise_for_status()  # Lança exceção se houver erro HTTP
-        st.success("📨 Mensagem enviada para o grupo do Telegram!")
-    except requests.exceptions.RequestException as e:
-        st.error(f"Erro ao enviar mensagem para o Telegram: {e}")
-
-
-
 
 # --- App Streamlit ---
 st.set_page_config(page_title="Sistema de Agendamentos", layout="centered")
@@ -216,15 +166,6 @@ if service:
                     st.success("✅ Agendamento criado com sucesso no Google Calendar!")
                     st.markdown(f"[📅 Ver no Google Calendar]({link_evento})")
 
-                    enviar_mensagem_telegram_agendamento(
-                        cliente=cliente,
-                        data=data_inicio,
-                        hora=hora_inicio,
-                        valor_total=valor_total,
-                        valor_entrada=valor_entrada,
-                        tipo_servico=tipo_servico
-                    )
-
                     linha = {
                         "Data e Hora Início": data_hora_inicio.strftime("%Y-%m-%d %H:%M"),
                         "Data e Hora Fim": data_hora_fim.strftime("%Y-%m-%d %H:%M"),
@@ -247,8 +188,3 @@ if service:
                         df_novo = pd.DataFrame([linha])
 
                     df_novo.to_csv(arquivo_csv, index=False)
-else:
-    st.warning("Erro na autenticação com Google Calendar. Verifique suas credenciais e permissões do calendário.")
-
-
-
