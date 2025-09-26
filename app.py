@@ -86,7 +86,6 @@ st.title("📅 Sistema de Agendamento com Google Calendar")
 service = get_google_calendar_service()
 
 if service:
-    # A lógica principal do formulário foi movida para dentro de um bloco st.form
     with st.form("form_agendamento", clear_on_submit=True):
         st.subheader("Informações do Agendamento")
         cliente = st.text_input("👤 Nome do Cliente")
@@ -115,14 +114,14 @@ if service:
         lembretes_minutos = [lembrete_opcoes[l] for l in lembretes_selecionados]
 
         st.subheader("Informações Financeiras")
-        valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, step=10.0)
+        valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, step=10.0, format="%.2f")
         
         entrada = st.checkbox("✅ Houve entrada de dinheiro?")
         valor_entrada = 0.0
         forma_pagamento = "Não houve entrada"
         
         if entrada:
-            valor_entrada = st.number_input("💵 Valor da Entrada (R$)", min_value=0.0, max_value=valor_total, step=10.0)
+            valor_entrada = st.number_input("💵 Valor da Entrada (R$)", min_value=0.0, max_value=valor_total, step=10.0, format="%.2f")
             forma_pagamento = st.selectbox("💳 Forma de Pagamento", ["Pix", "Dinheiro", "Cartão", "Transferência", "Outro"])
 
         submitted = st.form_submit_button("Agendar")
