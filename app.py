@@ -88,15 +88,29 @@ def criar_evento_google_calendar(service, info_evento):
         return None
 
 
-def enviar_mensagem_telegram_agendamento(cliente, data, hora, valor_total, valor_entrada, tipo_servico):
+
+
+
+def enviar_mensagem_telegram_agendamento(cliente, data_hora_inicio, data_hora_fim, valor_total, valor_entrada, tipo_servico):
+    # Formatação de valores no padrão brasileiro
+    valor_total_formatado = f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    valor_entrada_formatado = f"R$ {valor_entrada:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    # Formatação das datas e horários
+    data_inicio_fmt = data_hora_inicio.strftime('%d/%m/%Y')
+    hora_inicio_fmt = data_hora_inicio.strftime('%H:%M')
+    data_fim_fmt = data_hora_fim.strftime('%d/%m/%Y')
+    hora_fim_fmt = data_hora_fim.strftime('%H:%M')
+
+    # Mensagem final
     mensagem = (
         f"📅 *Novo Agendamento Realizado!*\n\n"
         f"👤 *Cliente:* {cliente}\n"
         f"🛠 *Serviço:* {tipo_servico}\n"
-        f"📆 *Data:* {data.strftime('%d/%m/%Y')}\n"
-        f"⏰ *Horário:* {hora.strftime('%H:%M')}\n"
-        f"💰 *Valor Total:* R$ {valor_total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.') + "\n"
-        f"💵 *Entrada:* R$ {valor_entrada:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+        f"📆 *Início:* {data_inicio_fmt} às {hora_inicio_fmt}\n"
+        f"📆 *Fim:* {data_fim_fmt} às {hora_fim_fmt}\n"
+        f"💰 *Valor Total:* {valor_total_formatado}\n"
+        f"💵 *Entrada:* {valor_entrada_formatado}"
     )
 
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -107,11 +121,13 @@ def enviar_mensagem_telegram_agendamento(cliente, data, hora, valor_total, valor
         "message_thread_id": TOPICO_ID
     }
 
-    response = requests.post(url, data=data)
-    if response.status_code != 200:
-        st.error(f"Erro ao enviar mensagem para o Telegram: {response.json()}")
-    else:
+    try:
+        response = requests.post(url, data=data)
+        response.raise_for_status()
         st.success("📨 Mensagem enviada para o grupo do Telegram!")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erro ao enviar mensagem para o Telegram: {e}")
+
 
 
 # --- App Streamlit ---
@@ -234,3 +250,4 @@ if service:
                     df_novo.to_csv(arquivo_csv, index=False)
 else:
     st.warning("Erro na autenticação com Google Calendar. Verifique suas credenciais e permissões do calendário.")
+
