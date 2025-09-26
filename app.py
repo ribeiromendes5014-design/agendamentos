@@ -91,6 +91,10 @@ def criar_evento_google_calendar(service, info_evento):
 
 
 
+import requests
+import streamlit as st  # Certifique-se de que Streamlit está importado
+
+
 def enviar_mensagem_telegram_agendamento(cliente, data_hora_inicio, data_hora_fim, valor_total, valor_entrada, tipo_servico):
     # Formatação de valores no padrão brasileiro
     valor_total_formatado = f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -114,7 +118,7 @@ def enviar_mensagem_telegram_agendamento(cliente, data_hora_inicio, data_hora_fi
     )
 
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    data = {
+    payload = {
         "chat_id": TELEGRAM_CHAT_ID,
         "text": mensagem,
         "parse_mode": "Markdown",
@@ -122,11 +126,12 @@ def enviar_mensagem_telegram_agendamento(cliente, data_hora_inicio, data_hora_fi
     }
 
     try:
-        response = requests.post(url, data=data)
+        response = requests.post(url, data=payload)
         response.raise_for_status()
         st.success("📨 Mensagem enviada para o grupo do Telegram!")
     except requests.exceptions.RequestException as e:
         st.error(f"Erro ao enviar mensagem para o Telegram: {e}")
+
 
 
 
@@ -250,4 +255,5 @@ if service:
                     df_novo.to_csv(arquivo_csv, index=False)
 else:
     st.warning("Erro na autenticação com Google Calendar. Verifique suas credenciais e permissões do calendário.")
+
 
