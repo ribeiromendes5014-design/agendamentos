@@ -95,8 +95,8 @@ def enviar_mensagem_telegram_agendamento(cliente, data, hora, valor_total, valor
         f"🛠 *Serviço:* {tipo_servico}\n"
         f"📆 *Data:* {data.strftime('%d/%m/%Y')}\n"
         f"⏰ *Horário:* {hora.strftime('%H:%M')}\n"
-        f"💰 *Valor Total:* R$ {valor_total:.2f}\n"
-        f"💵 *Entrada:* R$ {valor_entrada:.2f}"
+        f"💰 *Valor Total:* R$ {valor_total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.') + "\n"
+        f"💵 *Entrada:* R$ {valor_entrada:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
     )
 
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -112,6 +112,7 @@ def enviar_mensagem_telegram_agendamento(cliente, data, hora, valor_total, valor
         st.error(f"Erro ao enviar mensagem para o Telegram: {response.json()}")
     else:
         st.success("📨 Mensagem enviada para o grupo do Telegram!")
+
 
 
 # --- App Streamlit ---
@@ -234,3 +235,4 @@ if service:
                     df_novo.to_csv(arquivo_csv, index=False)
 else:
     st.warning("Erro na autenticação com Google Calendar. Verifique suas credenciais e permissões do calendário.")
+
