@@ -22,18 +22,12 @@ TOPICO_ID = 64  # ID do tópico (thread) no grupo Telegram
 
 
 def get_google_calendar_service():
-    """Autentica usando a conta de serviço do secrets e retorna o serviço do Google Calendar."""
     try:
-        # Carregar credenciais do secrets
         service_account_info = st.secrets["google_service_account"]
-
-        # Converter para dict caso esteja em string JSON
         if isinstance(service_account_info, str):
             service_account_info = json.loads(service_account_info)
-
         creds = service_account.Credentials.from_service_account_info(
             service_account_info, scopes=SCOPES)
-
         service = build('calendar', 'v3', credentials=creds)
         return service
     except Exception as e:
@@ -46,15 +40,9 @@ def criar_evento_google_calendar(service, info_evento):
     data_hora_inicio_aware = tz.localize(info_evento['data_hora_inicio'])
     data_hora_fim_aware = tz.localize(info_evento['data_hora_fim'])
 
-    # Configurar lembretes
     reminders_list = [{'method': 'popup', 'minutes': m} for m in info_evento['lembretes_minutos']]
-    
-    reminders = {
-        'useDefault': False,
-        'overrides': reminders_list
-    }
+    reminders = {'useDefault': False, 'overrides': reminders_list}
 
-    # Adicionar o local de forma mais detalhada
     local = info_evento['local']
     if info_evento['endereco']:
         local = f"{info_evento['local']} ({info_evento['endereco']})"
@@ -65,14 +53,8 @@ def criar_evento_google_calendar(service, info_evento):
         'description': f"Valor total: R${info_evento['valor_total']:.2f}\n"
                        f"Entrada: R${info_evento['valor_entrada']:.2f}\n"
                        f"Forma de pagamento: {info_evento['forma_pagamento']}\n",
-        'start': {
-            'dateTime': data_hora_inicio_aware.isoformat(),
-            'timeZone': 'America/Sao_Paulo',
-        },
-        'end': {
-            'dateTime': data_hora_fim_aware.isoformat(),
-            'timeZone': 'America/Sao_Paulo',
-        },
+        'start': {'dateTime': data_hora_inicio_aware.isoformat(), 'timeZone': 'America/Sao_Paulo'},
+        'end': {'dateTime': data_hora_fim_aware.isoformat(), 'timeZone': 'America/Sao_Paulo'},
         'reminders': reminders,
     }
 
@@ -88,25 +70,15 @@ def criar_evento_google_calendar(service, info_evento):
         return None
 
 
-
-
-
-import requests
-import streamlit as st  # Certifique-se de que Streamlit está importado
-
-
 def enviar_mensagem_telegram_agendamento(cliente, data_hora_inicio, data_hora_fim, valor_total, valor_entrada, tipo_servico):
-    # Formatação de valores no padrão brasileiro
     valor_total_formatado = f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     valor_entrada_formatado = f"R$ {valor_entrada:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-    # Formatação das datas e horários
     data_inicio_fmt = data_hora_inicio.strftime('%d/%m/%Y')
     hora_inicio_fmt = data_hora_inicio.strftime('%H:%M')
     data_fim_fmt = data_hora_fim.strftime('%d/%m/%Y')
     hora_fim_fmt = data_hora_fim.strftime('%H:%M')
 
-    # Mensagem final
     mensagem = (
         f"📅 *Novo Agendamento Realizado!*\n\n"
         f"👤 *Cliente:* {cliente}\n"
@@ -133,8 +105,6 @@ def enviar_mensagem_telegram_agendamento(cliente, data_hora_inicio, data_hora_fi
         st.error(f"Erro ao enviar mensagem para o Telegram: {e}")
 
 
-
-
 # --- App Streamlit ---
 st.set_page_config(page_title="Sistema de Agendamentos", layout="centered")
 st.title("📅 Sistema de Agendamento com Google Calendar")
@@ -146,10 +116,9 @@ if service:
         st.subheader("Informações do Agendamento")
         cliente = st.text_input("👤 Nome do Cliente")
         tipo_servico = st.text_input("🛠 Tipo de Serviço (ex: Sessão de Fotos, Consultoria)")
-        
         local = st.text_input("📍 Local")
         endereco = st.text_input("Endereço completo (opcional)")
-        
+
         col1, col2 = st.columns(2)
         with col1:
             data_inicio = st.date_input("📆 Data de Início")
@@ -171,29 +140,27 @@ if service:
 
         st.subheader("Informações Financeiras")
         valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, value=100.0, step=10.0, format="%.2f")
-        
+
         entrada = st.checkbox("✅ Houve entrada de dinheiro?")
-        
         valor_entrada_input = 0.0
         forma_pagamento_input = "Não houve entrada"
-        
+
         if entrada:
             valor_entrada_input = st.number_input("💵 Valor da Entrada (R$)", min_value=0.0, max_value=valor_total, step=10.0, format="%.2f")
             forma_pagamento_input = st.selectbox("💳 Forma de Pagamento", ["Pix", "Dinheiro", "Cartão", "Transferência", "Outro"])
 
         submitted = st.form_submit_button("Agendar")
-        
+
         if submitted:
             data_hora_inicio = datetime.combine(data_inicio, hora_inicio)
             data_hora_fim = datetime.combine(data_fim, hora_fim)
-            
+
             valor_entrada = 0.0
             forma_pagamento = "Não houve entrada"
             if entrada:
                 valor_entrada = valor_entrada_input
                 forma_pagamento = forma_pagamento_input
-            
-            # Validar campos
+
             if not cliente:
                 st.error("O campo 'Nome do Cliente' é obrigatório.")
             elif not tipo_servico:
@@ -216,7 +183,7 @@ if service:
                     "forma_pagamento": forma_pagamento,
                     "lembretes_minutos": lembretes_minutos
                 }
-                
+
                 link_evento = criar_evento_google_calendar(service, dados)
                 if link_evento:
                     st.success("✅ Agendamento criado com sucesso no Google Calendar!")
@@ -255,5 +222,6 @@ if service:
                     df_novo.to_csv(arquivo_csv, index=False)
 else:
     st.warning("Erro na autenticação com Google Calendar. Verifique suas credenciais e permissões do calendário.")
+
 
 
