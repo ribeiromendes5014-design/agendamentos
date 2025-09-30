@@ -42,7 +42,6 @@ def criar_evento_google_calendar(service, info_evento):
     tz = pytz.timezone(TIMEZONE)
     data_hora_inicio_aware = tz.localize(info_evento['data_hora_inicio'])
     data_hora_fim_aware = tz.localize(info_evento['data_hora_fim'])
-    # ... (código da função original sem alterações) ...
     reminders_list = [{'method': 'popup', 'minutes': m} for m in info_evento['lembretes_minutos']]
     reminders = {'useDefault': False, 'overrides': reminders_list}
 
@@ -71,7 +70,6 @@ def criar_evento_google_calendar(service, info_evento):
 
 def enviar_mensagem_telegram_agendamento(cliente, data, hora, valor_total, valor_entrada, tipo_servico):
     """Envia uma mensagem de confirmação para o Telegram."""
-    # ... (código da função original sem alterações) ...
     mensagem = (
         f"📅 *Novo Agendamento Realizado!*\n\n"
         f"👤 *Cliente:* {cliente}\n"
@@ -135,7 +133,6 @@ st.title("📅 Sistema de Agendamento")
 service = get_google_calendar_service()
 
 if service:
-    # CORREÇÃO: Movido para fora da aba para evitar NameError
     lembrete_opcoes = {
         "15 minutos antes": 15, "30 minutos antes": 30, "1 hora antes": 60,
         "2 horas antes": 120, "1 dia antes": 1440
@@ -143,7 +140,6 @@ if service:
     tab1, tab2 = st.tabs(["➕ Novo Agendamento", "📋 Consultar Agendamentos"])
 
     with tab1:
-        # --- Formulário de Novo Agendamento ---
         st.subheader("Informações do Agendamento")
         cliente = st.text_input("👤 Nome do Cliente")
         tipo_servico = st.text_input("🛠 Tipo de Serviço (ex: Sessão de Fotos)")
@@ -176,7 +172,6 @@ if service:
         
         st.markdown("---")
         st.subheader("Informações Financeiras")
-        # ... (seção financeira sem alterações) ...
         valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, value=100.0, step=10.0, format="%.2f")
         entrada = st.checkbox("✅ Houve entrada de dinheiro?")
         valor_entrada_input = 0.0
@@ -187,7 +182,6 @@ if service:
 
         st.markdown("---")
         if st.button("Agendar Evento", type="primary"):
-            # Lógica de validação e criação do evento
             data_hora_inicio = datetime.combine(data_inicio, hora_inicio)
             if data_hora_fim is None: st.error("Defina um horário de término.")
             elif not all([cliente, tipo_servico, local]): st.error("Preencha Cliente, Serviço e Local.")
@@ -205,7 +199,7 @@ if service:
                     st.success("✅ Agendamento criado com sucesso!")
                     st.markdown(f"[📅 Ver no Google Calendar]({link_evento})")
                     enviar_mensagem_telegram_agendamento(cliente, data_inicio, hora_inicio, valor_total, dados["valor_entrada"], tipo_servico)
-                    # Lógica de salvar no CSV (mantida como backup)
+                    
                     linha = {"Data e Hora Início": data_hora_inicio.strftime("%Y-%m-%d %H:%M"), "Data e Hora Fim": data_hora_fim.strftime("%Y-%m-%d %H:%M"), "Cliente": cliente, "Serviço": tipo_servico, "Duração (min)": (data_hora_fim - data_hora_inicio).total_seconds()/60, "Local": local, "Endereço": endereco, "Valor Total": valor_total, "Entrada": dados["valor_entrada"], "Forma de Pagamento": dados["forma_pagamento"], "Link do Evento": link_evento}
                     df_existente = carregar_agendamentos_csv()
                     df_novo = pd.concat([df_existente, pd.DataFrame([linha])], ignore_index=True)
@@ -241,7 +235,13 @@ if service:
         if df_csv.empty:
             st.info("Nenhum histórico de agendamento no arquivo de backup.")
         else:
-            st.dataframe(df_csv.sort_values(by='Data e Hora Início', ascending=False), use_container_width=True, hide_index=True)
+            # CORREÇÃO: Verifica se a coluna de data existe antes de tentar ordenar
+            if 'Data e Hora Início' in df_csv.columns:
+                df_csv['Data e Hora Início'] = pd.to_datetime(df_csv['Data e Hora Início'])
+                st.dataframe(df_csv.sort_values(by='Data e Hora Início', ascending=False), use_container_width=True, hide_index=True)
+            else:
+                st.warning("O arquivo de backup ('agendamentos.csv') parece ter um formato antigo e não pode ser ordenado por data.")
+                st.dataframe(df_csv, use_container_width=True, hide_index=True)
 else:
     st.warning("Falha na autenticação com Google Calendar.")
 
