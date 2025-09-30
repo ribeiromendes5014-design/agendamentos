@@ -18,7 +18,7 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 # --- Configurações ---
 # O ID do calendário a ser gerenciado.
 # IMPORTANTE: A conta de serviço precisa de permissão neste calendário.
-CALENDAR_ID = "ribeirodesenvolvedor@gmail.com" 
+CALENDAR_ID = "ribeiromendes5016@gmail.com" 
 TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN", "YOUR_TELEGRAM_TOKEN_HERE")
 TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 TOPICO_ID = 64
@@ -264,4 +264,5 @@ if service:
                     st.dataframe(df_csv, use_container_width=True, hide_index=True)
 else:
     st.warning("Falha na autenticação com Google Calendar.")
+
 
