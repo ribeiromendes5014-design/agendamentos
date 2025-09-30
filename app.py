@@ -16,8 +16,9 @@ from googleapiclient.errors import HttpError
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # --- Configurações ---
-# CORREÇÃO: O ID do calendário foi corrigido para o e-mail correto.
-CALENDAR_ID = "ribeirodesenvolvedor@gmail.com"
+# O ID do calendário a ser gerenciado.
+# IMPORTANTE: A conta de serviço precisa de permissão neste calendário.
+CALENDAR_ID = "ribeirodesenvolvedor@gmail.com" 
 TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN", "YOUR_TELEGRAM_TOKEN_HERE")
 TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 TOPICO_ID = 64
@@ -62,11 +63,10 @@ def criar_evento_google_calendar(service, info_evento):
         'reminders': reminders,
     }
     try:
-        # IMPORTANTE: A conta de serviço precisa ter permissão de "Fazer alterações nos eventos" neste calendário.
         evento_criado = service.events().insert(calendarId=CALENDAR_ID, body=evento).execute()
         return evento_criado.get('htmlLink')
     except HttpError as error:
-        st.error(f"Erro na API do Google Calendar: {error}. Verifique se o CALENDAR_ID está correto e se a conta de serviço tem permissão.")
+        st.error(f"Erro na API do Google Calendar: {error}. Verifique se o CALENDAR_ID está correto e se a conta de serviço tem a permissão 'Fazer alterações nos eventos'.")
     return None
 
 
@@ -129,7 +129,6 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
             time_min = (now - timedelta(days=dias)).isoformat()
             order_by = 'startTime'
 
-        # IMPORTANTE: A conta de serviço precisa ter permissão de "Ver todos os detalhes de eventos" neste calendário.
         events_result = service.events().list(
             calendarId=CALENDAR_ID,
             timeMin=time_min,
@@ -141,7 +140,7 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
         events = events_result.get('items', [])
         return parse_google_events(events)
     except HttpError as error:
-        st.error(f"Erro ao buscar eventos do Google Calendar: {error}. Verifique se o CALENDAR_ID está correto e se a conta de serviço tem permissão.")
+        st.error(f"Erro ao buscar eventos do Google Calendar: {error}. Verifique se o CALENDAR_ID está correto e se a conta de serviço tem a permissão 'Fazer alterações nos eventos'.")
     return pd.DataFrame()
 
 
