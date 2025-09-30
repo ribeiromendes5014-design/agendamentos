@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 from datetime import datetime, timedelta
 import pandas as pd
@@ -28,14 +29,15 @@ TIMEZONE = 'America/Sao_Paulo'
 BACKGROUND_IMAGE_URL = "https://i.ibb.co/QfY9vgV/background.jpg"
 
 def set_background(image_url):
+    # CSS corrigido para garantir que o fundo fique sempre visível
     st.markdown(
         f"""
         <style>
         .stApp::before {{
             content: "";
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 0;
+            left: 0; right: 0; top: 0; bottom: 0;
+            z-index: -1; /* Garante que o fundo fique sempre atrás de todo o conteúdo */
             background-image: url("{image_url}");
             background-size: cover;
             background-position: center;
@@ -43,20 +45,18 @@ def set_background(image_url):
             -webkit-filter: blur(8px);
         }}
         [data-testid="stAppViewContainer"] > .main .block-container {{
-            position: relative;
-            z-index: 1;
             background-color: rgba(255, 255, 255, 0.9);
             border-radius: 15px;
             padding: 2rem;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
         }}
+        [data-testid="stHeader"], [data-testid="stTabs"] {{
+            background: transparent;
+        }}
         </style>
         """,
         unsafe_allow_html=True
     )
-BACKGROUND_IMAGE_URL = "https://i.ibb.co/QfY9vgV/background.jpg"
-set_background(BACKGROUND_IMAGE_URL)
-
 
 def get_google_calendar_service():
     try:
@@ -159,6 +159,7 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
 # --- App Streamlit ---
 st.set_page_config(page_title="Sistema de Agendamentos", layout="wide")
 
+# Aplica o fundo logo no início, após a configuração da página
 set_background(BACKGROUND_IMAGE_URL)
 
 st.title("📅 Sistema de Agendamento")
@@ -280,16 +281,4 @@ if service:
             st.info("Nenhum agendamento no arquivo de backup.")
 else:
     st.warning("Falha na autenticação com Google Calendar.")
-
-
-
-
-
-
-
-
-
-
-
-
 
