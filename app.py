@@ -55,6 +55,8 @@ def set_background(image_url):
         """,
         unsafe_allow_html=True
     )
+BACKGROUND_IMAGE_URL = "https://i.ibb.co/QfY9vgV/background.jpg"
+set_background(BACKGROUND_IMAGE_URL)
 
 
 def get_google_calendar_service():
@@ -279,6 +281,7 @@ if service:
             st.info("Nenhum agendamento no arquivo de backup.")
 else:
     st.warning("Falha na autenticação com Google Calendar.")
+
 
 
 
