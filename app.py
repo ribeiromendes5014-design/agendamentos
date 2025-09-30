@@ -17,7 +17,8 @@ from googleapiclient.errors import HttpError
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # --- Configurações ---
-CALENDAR_ID = "ribeiromendes5016@gmail.com"
+# ATENÇÃO: Verifique se este é o e-mail correto do seu calendário!
+CALENDAR_ID = "ribeirodesenvolvedor@gmail.com" 
 TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN", "YOUR_TELEGRAM_TOKEN_HERE")
 TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 TOPICO_ID = 64
@@ -36,10 +37,6 @@ def set_background(image_data):
     st.markdown(
         f"""
         <style>
-        .stApp {{
-            position: relative;
-        }}
-
         .stApp::before {{
             content: "";
             position: fixed;
@@ -56,17 +53,16 @@ def set_background(image_data):
         }}
 
         [data-testid="stAppViewContainer"] > .main .block-container {{
-            background-color: rgba(255, 255, 255, 0.90); /* Aumenta a opacidade */
-            border-radius: 15px; /* Bordas mais arredondadas */
+            background-color: rgba(255, 255, 255, 0.95); /* Aumenta a opacidade para garantir legibilidade */
+            border-radius: 15px;
             padding: 2rem;
-            backdrop-filter: blur(5px);
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
             border: 1px solid rgba(255, 255, 255, 0.18);
         }}
 
         /* Sombra de texto para melhor legibilidade */
         .stApp, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp p, .stApp li {{
-            text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2);
+            text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
         }}
 
         [data-testid="stHeader"], [data-testid="stTabs"] {{
@@ -74,7 +70,7 @@ def set_background(image_data):
         }}
         
         [data-testid="stExpander"] {{
-            background-color: rgba(240, 242, 246, 0.8);
+            background-color: rgba(240, 242, 246, 0.85);
             border-radius: 10px;
         }}
         </style>
@@ -184,7 +180,7 @@ if img_base64:
     set_background(bg_image_data)
 else:
     st.warning(f"'{NOME_ARQUIVO_FUNDO}' não encontrado. Usando fundo padrão.")
-    BG_IMAGE_URL = "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1964&auto=format&fit=crop"
+    BG_IMAGE_URL = "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1964&auto-format&fit=crop"
     set_background(BG_IMAGE_URL)
 
 st.title("📅 Sistema de Agendamento")
