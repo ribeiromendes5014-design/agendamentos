@@ -28,6 +28,8 @@ TIMEZONE = 'America/Sao_Paulo'
 # --- Configuração do Fundo (Link direto da imagem) ---
 BACKGROUND_IMAGE_URL = "https://i.ibb.co/QfY9vgV/background.jpg"
 
+set_background(BACKGROUND_IMAGE_URL)
+
 def set_background(image_url):
     st.markdown(
         f"""
@@ -287,6 +289,7 @@ if service:
             st.info("Nenhum agendamento no arquivo de backup.")
 else:
     st.warning("Falha na autenticação com Google Calendar.")
+
 
 
 
