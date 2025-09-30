@@ -90,7 +90,6 @@ def carregar_agendamentos_csv():
     """Carrega os agendamentos do arquivo CSV, garantindo a coluna 'Status'."""
     if os.path.exists(ARQUIVO_CSV):
         df = pd.read_csv(ARQUIVO_CSV)
-        # Garante que a coluna Status exista para compatibilidade com arquivos antigos
         if 'Status' not in df.columns:
             df['Status'] = 'Pendente'
         return df
@@ -133,6 +132,10 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
 # --- App Streamlit ---
 st.set_page_config(page_title="Sistema de Agendamentos", layout="centered")
 st.title("📅 Sistema de Agendamento")
+
+# Inicializa o estado de sessão para a confirmação
+if 'confirming' not in st.session_state:
+    st.session_state.confirming = {}
 
 service = get_google_calendar_service()
 
@@ -191,7 +194,6 @@ if service:
 
     with tab2:
         st.header("🗓️ Seus Compromissos")
-        # Visualização do Google Calendar
         with st.expander("Visualizar Agendamentos do Google Calendar", expanded=True):
             df_futuros = puxar_eventos_google_calendar(service, periodo="futuro")
             if not df_futuros.empty:
@@ -206,7 +208,6 @@ if service:
                 st.dataframe(df_futuros.assign(**{'Data e Hora Início': lambda df: df['Data e Hora Início'].dt.strftime('%d/%m/%Y %H:%M'), 'Data e Hora Fim': lambda df: df['Data e Hora Fim'].dt.strftime('%d/%m/%Y %H:%M')}), use_container_width=True, hide_index=True)
             else: st.info("Nenhum agendamento futuro encontrado no Google Calendar.")
         
-        # Gerenciamento de Tarefas do CSV
         st.markdown("---")
         st.header("✔️ Gerenciar Tarefas (Backup Local)")
         df_csv = carregar_agendamentos_csv()
@@ -220,14 +221,27 @@ if service:
             else:
                 for index, row in df_pendentes.iterrows():
                     with st.container(border=True):
-                        col1, col2 = st.columns([3, 1])
-                        col1.markdown(f"**Cliente:** {row['Cliente']} | **Serviço:** {row['Serviço']}\n\n"
-                                      f"**Data:** {pd.to_datetime(row['Data e Hora Início']).strftime('%d/%m/%Y às %H:%M')}")
-                        if col2.button("✅ Concluir", key=f"concluir_{index}", use_container_width=True):
-                            df_csv.loc[index, 'Status'] = 'Concluído'
-                            df_csv.to_csv(ARQUIVO_CSV, index=False)
-                            st.toast(f"Tarefa de {row['Cliente']} concluída!")
-                            st.rerun()
+                        col1, col2 = st.columns([3, 1.2])
+                        col1.markdown(f"**Cliente:** {row.get('Cliente', 'N/A')} | **Serviço:** {row.get('Serviço', 'N/A')}\n\n"
+                                      f"**Data:** {pd.to_datetime(row.get('Data e Hora Início')).strftime('%d/%m/%Y às %H:%M')}")
+                        
+                        # Lógica de confirmação
+                        if st.session_state.confirming.get(index):
+                            col2.write("Confirmar?")
+                            confirm_col, cancel_col = col2.columns(2)
+                            if confirm_col.button("Sim", key=f"confirm_{index}", use_container_width=True):
+                                df_csv.loc[index, 'Status'] = 'Concluído'
+                                df_csv.to_csv(ARQUIVO_CSV, index=False)
+                                st.toast(f"Tarefa de {row.get('Cliente')} concluída!")
+                                st.session_state.confirming[index] = False
+                                st.rerun()
+                            if cancel_col.button("Não", key=f"cancel_{index}", use_container_width=True):
+                                st.session_state.confirming[index] = False
+                                st.rerun()
+                        else:
+                            if col2.button("✅ Concluir", key=f"concluir_{index}", use_container_width=True):
+                                st.session_state.confirming[index] = True
+                                st.rerun()
 
             with st.expander("Ver Histórico de Tarefas Concluídas"):
                 if df_concluidos.empty:
@@ -238,3 +252,4 @@ if service:
             st.info("Nenhum agendamento encontrado no arquivo de backup local.")
 else:
     st.warning("Falha na autenticação com Google Calendar.")
+
