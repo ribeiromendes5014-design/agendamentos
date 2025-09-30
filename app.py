@@ -6,6 +6,7 @@ import os
 import json
 import pytz
 import requests
+import base64 # Importado para converter a imagem local
 
 # Google Calendar
 from google.oauth2 import service_account
@@ -22,7 +23,53 @@ TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 TOPICO_ID = 64
 ARQUIVO_CSV = "agendamentos.csv"
 TIMEZONE = 'America/Sao_Paulo'
+NOME_ARQUIVO_FUNDO = "background.jpg" # Nome do arquivo da sua foto
 
+def get_image_as_base64(file):
+    """
+    Função para ler uma imagem local e convertê-la para base64.
+    """
+    if os.path.exists(file):
+        with open(file, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    return None
+
+def set_background(image_data):
+    """
+    Função para configurar um plano de fundo customizado com CSS.
+    Pode receber uma URL ou dados em base64.
+    """
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("{image_data}");
+            background-attachment: fixed;
+            background-size: cover;
+            background-position: center;
+        }}
+        [data-testid="stAppViewContainer"] > .main .block-container {{
+            background-color: rgba(255, 255, 255, 0.85);
+            border-radius: 10px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }}
+        [data-testid="stHeader"] {{
+            background-color: transparent;
+        }}
+        [data-testid="stExpander"] {{
+            background-color: rgba(240, 242, 246, 0.75);
+            border-radius: 10px;
+        }}
+        [data-testid="stTabs"] {{
+            background-color: transparent;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 def get_google_calendar_service():
     """Autentica e retorna o serviço do Google Calendar."""
@@ -130,7 +177,20 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
 
 
 # --- App Streamlit ---
-st.set_page_config(page_title="Sistema de Agendamentos", layout="centered")
+st.set_page_config(page_title="Sistema de Agendamentos", layout="wide")
+
+# Lógica para usar imagem de fundo local ou online
+img_base64 = get_image_as_base64(NOME_ARQUIVO_FUNDO)
+if img_base64:
+    # Usa a imagem local convertida
+    bg_image_data = f"data:image/jpg;base64,{img_base64}"
+    set_background(bg_image_data)
+else:
+    # Usa uma URL padrão como fallback se a imagem local não for encontrada
+    st.warning(f"Arquivo '{NOME_ARQUIVO_FUNDO}' não encontrado. Usando imagem de fundo padrão.")
+    BG_IMAGE_URL = "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1964&auto=format&fit=crop"
+    set_background(BG_IMAGE_URL)
+
 st.title("📅 Sistema de Agendamento")
 
 # Inicializa o estado de sessão para a confirmação
@@ -225,7 +285,6 @@ if service:
                         col1.markdown(f"**Cliente:** {row.get('Cliente', 'N/A')} | **Serviço:** {row.get('Serviço', 'N/A')}\n\n"
                                       f"**Data:** {pd.to_datetime(row.get('Data e Hora Início')).strftime('%d/%m/%Y às %H:%M')}")
                         
-                        # Lógica de confirmação
                         if st.session_state.confirming.get(index):
                             col2.write("Confirmar?")
                             confirm_col, cancel_col = col2.columns(2)
