@@ -60,7 +60,7 @@ def criar_evento_google_calendar(service, info_evento):
         'reminders': reminders,
     }
     try:
-        calendar_id = 'primary' # Usando o calendário principal
+        calendar_id = 'primary'
         evento_criado = service.events().insert(calendarId=calendar_id, body=evento).execute()
         return evento_criado.get('htmlLink')
     except HttpError as error:
@@ -95,32 +95,48 @@ def carregar_agendamentos_csv():
     return pd.DataFrame()
 
 
-def puxar_eventos_google_calendar(service):
-    """Puxa os próximos eventos diretamente do Google Calendar."""
+def parse_google_events(events):
+    """Converte a lista de eventos do Google em um DataFrame do Pandas."""
+    lista_eventos = []
+    for event in events:
+        start = event['start'].get('dateTime', event['start'].get('date'))
+        end = event['end'].get('dateTime', event['end'].get('date'))
+        summary = event.get('summary', 'Sem Título')
+        cliente, servico = (summary.split(' - ') + ['N/A'])[:2]
+
+        lista_eventos.append({
+            'Data e Hora Início': pd.to_datetime(start).tz_convert(TIMEZONE).tz_localize(None), # Remove tz info for display
+            'Data e Hora Fim': pd.to_datetime(end).tz_convert(TIMEZONE).tz_localize(None),
+            'Cliente': cliente,
+            'Serviço': servico,
+            'Local': event.get('location', 'N/A'),
+        })
+    return pd.DataFrame(lista_eventos)
+
+
+def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
+    """Puxa eventos futuros ou passados do Google Calendar."""
     try:
-        now_utc = datetime.utcnow().isoformat() + 'Z'
+        now = datetime.now(pytz.timezone(TIMEZONE))
+        if periodo == "futuro":
+            time_min = now.isoformat()
+            time_max = None
+            order_by = 'startTime'
+        else: # periodo == "passado"
+            time_max = now.isoformat()
+            time_min = (now - timedelta(days=dias)).isoformat()
+            order_by = 'startTime'
+
         events_result = service.events().list(
-            calendarId='primary', timeMin=now_utc,
-            maxResults=250, singleEvents=True, orderBy='startTime'
+            calendarId='primary',
+            timeMin=time_min,
+            timeMax=time_max,
+            maxResults=250,
+            singleEvents=True,
+            orderBy=order_by
         ).execute()
         events = events_result.get('items', [])
-        
-        lista_eventos = []
-        for event in events:
-            start = event['start'].get('dateTime', event['start'].get('date'))
-            end = event['end'].get('dateTime', event['end'].get('date'))
-            summary = event.get('summary', 'Sem Título')
-            cliente, servico = (summary.split(' - ') + ['N/A'])[:2]
-
-            lista_eventos.append({
-                'Data e Hora Início': pd.to_datetime(start).tz_convert(TIMEZONE),
-                'Data e Hora Fim': pd.to_datetime(end).tz_convert(TIMEZONE),
-                'Cliente': cliente,
-                'Serviço': servico,
-                'Local': event.get('location', 'N/A'),
-                'Link do Evento': event.get('htmlLink', '#')
-            })
-        return pd.DataFrame(lista_eventos)
+        return parse_google_events(events)
     except HttpError as error:
         st.error(f"Erro ao buscar eventos do Google Calendar: {error}")
     return pd.DataFrame()
@@ -140,6 +156,7 @@ if service:
     tab1, tab2 = st.tabs(["➕ Novo Agendamento", "📋 Consultar Agendamentos"])
 
     with tab1:
+        # --- Formulário de Novo Agendamento ---
         st.subheader("Informações do Agendamento")
         cliente = st.text_input("👤 Nome do Cliente")
         tipo_servico = st.text_input("🛠 Tipo de Serviço (ex: Sessão de Fotos)")
@@ -187,19 +204,12 @@ if service:
             elif not all([cliente, tipo_servico, local]): st.error("Preencha Cliente, Serviço e Local.")
             elif data_hora_inicio >= data_hora_fim: st.error("Início deve ser antes do fim.")
             else:
-                dados = {
-                    "cliente": cliente, "tipo_servico": tipo_servico, "local": local, "endereco": endereco,
-                    "data_hora_inicio": data_hora_inicio, "data_hora_fim": data_hora_fim,
-                    "valor_total": valor_total, "valor_entrada": valor_entrada_input if entrada else 0.0,
-                    "forma_pagamento": forma_pagamento_input if entrada else "Não houve entrada",
-                    "lembretes_minutos": [lembrete_opcoes[l] for l in lembretes_selecionados]
-                }
+                dados = { "cliente": cliente, "tipo_servico": tipo_servico, "local": local, "endereco": endereco, "data_hora_inicio": data_hora_inicio, "data_hora_fim": data_hora_fim, "valor_total": valor_total, "valor_entrada": valor_entrada_input if entrada else 0.0, "forma_pagamento": forma_pagamento_input if entrada else "Não houve entrada", "lembretes_minutos": [lembrete_opcoes[l] for l in lembretes_selecionados] }
                 with st.spinner("Criando evento..."): link_evento = criar_evento_google_calendar(service, dados)
                 if link_evento:
                     st.success("✅ Agendamento criado com sucesso!")
                     st.markdown(f"[📅 Ver no Google Calendar]({link_evento})")
                     enviar_mensagem_telegram_agendamento(cliente, data_inicio, hora_inicio, valor_total, dados["valor_entrada"], tipo_servico)
-                    
                     linha = {"Data e Hora Início": data_hora_inicio.strftime("%Y-%m-%d %H:%M"), "Data e Hora Fim": data_hora_fim.strftime("%Y-%m-%d %H:%M"), "Cliente": cliente, "Serviço": tipo_servico, "Duração (min)": (data_hora_fim - data_hora_inicio).total_seconds()/60, "Local": local, "Endereço": endereco, "Valor Total": valor_total, "Entrada": dados["valor_entrada"], "Forma de Pagamento": dados["forma_pagamento"], "Link do Evento": link_evento}
                     df_existente = carregar_agendamentos_csv()
                     df_novo = pd.concat([df_existente, pd.DataFrame([linha])], ignore_index=True)
@@ -209,13 +219,14 @@ if service:
     with tab2:
         st.header("🗓️ Seus Compromissos")
         with st.spinner("Buscando agendamentos no Google Calendar..."):
-            df_google = puxar_eventos_google_calendar(service)
+            df_futuros = puxar_eventos_google_calendar(service, periodo="futuro")
+            df_passados = puxar_eventos_google_calendar(service, periodo="passado", dias=90)
 
-        if df_google.empty:
+        if df_futuros.empty:
             st.success("🎉 Nenhum agendamento futuro encontrado no Google Calendar. Você está livre!")
         else:
             st.subheader("Próximo Agendamento")
-            proximo = df_google.iloc[0]
+            proximo = df_futuros.sort_values(by='Data e Hora Início').iloc[0]
             with st.container(border=True):
                 st.markdown(f"##### 👤 **Cliente:** {proximo['Cliente']}")
                 st.markdown(f"**🛠️ Serviço:** {proximo['Serviço']}")
@@ -224,24 +235,33 @@ if service:
             
             st.markdown("---")
             st.subheader("Todos os Agendamentos Futuros")
-            df_display = df_google.copy()
-            df_display['Data e Hora Início'] = df_display['Data e Hora Início'].dt.strftime('%d/%m/%Y %H:%M')
-            df_display['Data e Hora Fim'] = df_display['Data e Hora Fim'].dt.strftime('%d/%m/%Y %H:%M')
-            st.dataframe(df_display.drop(columns=['Link do Evento']), use_container_width=True, hide_index=True)
+            df_display_futuros = df_futuros.copy()
+            df_display_futuros['Data e Hora Início'] = df_display_futuros['Data e Hora Início'].dt.strftime('%d/%m/%Y %H:%M')
+            df_display_futuros['Data e Hora Fim'] = df_display_futuros['Data e Hora Fim'].dt.strftime('%d/%m/%Y %H:%M')
+            st.dataframe(df_display_futuros, use_container_width=True, hide_index=True)
 
         st.markdown("---")
-        st.subheader("Histórico de Agendamentos (Backup Local)")
-        df_csv = carregar_agendamentos_csv()
-        if df_csv.empty:
-            st.info("Nenhum histórico de agendamento no arquivo de backup.")
-        else:
-            # CORREÇÃO: Verifica se a coluna de data existe antes de tentar ordenar
-            if 'Data e Hora Início' in df_csv.columns:
-                df_csv['Data e Hora Início'] = pd.to_datetime(df_csv['Data e Hora Início'])
-                st.dataframe(df_csv.sort_values(by='Data e Hora Início', ascending=False), use_container_width=True, hide_index=True)
+        # Seção de passados (do Google Calendar) com expander
+        with st.expander("Consultar Histórico Recente do Google Calendar (Últimos 90 dias)"):
+            if df_passados.empty:
+                st.info("Nenhum evento encontrado no período no Google Calendar.")
             else:
-                st.warning("O arquivo de backup ('agendamentos.csv') parece ter um formato antigo e não pode ser ordenado por data.")
-                st.dataframe(df_csv, use_container_width=True, hide_index=True)
+                df_display_passados = df_passados.copy().sort_values(by='Data e Hora Início', ascending=False)
+                df_display_passados['Data e Hora Início'] = df_display_passados['Data e Hora Início'].dt.strftime('%d/%m/%Y %H:%M')
+                df_display_passados['Data e Hora Fim'] = df_display_passados['Data e Hora Fim'].dt.strftime('%d/%m/%Y %H:%M')
+                st.dataframe(df_display_passados, use_container_width=True, hide_index=True)
+
+        st.markdown("---")
+        # Seção de backup local
+        with st.expander("Consultar Backup Local (arquivo agendamentos.csv)"):
+            df_csv = carregar_agendamentos_csv()
+            if df_csv.empty:
+                st.info("Nenhum histórico de agendamento no arquivo de backup.")
+            else:
+                if 'Data e Hora Início' in df_csv.columns:
+                    st.dataframe(df_csv.sort_values(by='Data e Hora Início', ascending=False), use_container_width=True, hide_index=True)
+                else:
+                    st.dataframe(df_csv, use_container_width=True, hide_index=True)
 else:
     st.warning("Falha na autenticação com Google Calendar.")
 
