@@ -24,57 +24,40 @@ TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 TOPICO_ID = 64
 ARQUIVO_CSV = "agendamentos.csv"
 TIMEZONE = 'America/Sao_Paulo'
-NOME_ARQUIVO_FUNDO = "background.jpg"
 
-def get_image_as_base64(file):
-    if os.path.exists(file):
-        with open(file, "rb") as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    return None
+# --- Link da sua imagem ---
+URL_DA_SUA_IMAGEM = "https://i.imgur.com/U8T9sY6.jpeg"
 
-def set_background(image_data):
+def set_background(image_url):
     st.markdown(
         f"""
         <style>
-        /* Cria um pseudo-elemento para segurar o fundo desfocado */
         .stApp::before {{
             content: "";
-            position: fixed; /* Cobre a tela inteira */
-            left: 0;
-            right: 0;
-            top: 0;
-            bottom: 0;
-            z-index: -2; /* Fica atrás de tudo */
-            background-image: url("{image_data}");
+            position: fixed;
+            left: 0; right: 0; top: 0; bottom: 0;
+            z-index: -2;
+            background-image: url("{image_url}");
             background-size: cover;
             background-position: center;
-            filter: blur(10px); /* Aumenta o desfoque para um efeito mais forte */
+            filter: blur(10px);
             -webkit-filter: blur(10px);
         }}
-
-        /* Container principal do conteúdo com o efeito "vidro fosco" */
         [data-testid="stAppViewContainer"] > .main .block-container {{
-            background-color: rgba(255, 255, 255, 0.75); /* Reduz a opacidade para o efeito ser visível */
+            background-color: rgba(255, 255, 255, 0.75);
             border-radius: 15px;
             padding: 2rem;
-            backdrop-filter: blur(5px); /* Efeito de vidro fosco no próprio container */
+            backdrop-filter: blur(5px);
             -webkit-backdrop-filter: blur(5px);
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.18);
         }}
-
-        /* Sombra de texto para melhorar a legibilidade */
-        .stApp, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp p, .stApp li {{
+        .stApp, .stApp h1, .stApp h2, .stApp h3, .stApp p, .stApp li {{
             text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2);
         }}
-
-        /* Garante que o header e as abas não tenham fundo sólido */
         [data-testid="stHeader"], [data-testid="stTabs"] {{
             background: transparent;
         }}
-        
-        /* Ajusta o fundo dos expanders para combinar */
         [data-testid="stExpander"] {{
             background-color: rgba(240, 242, 246, 0.80);
             border-radius: 10px;
@@ -180,14 +163,13 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
 # --- App Streamlit ---
 st.set_page_config(page_title="Sistema de Agendamentos", layout="wide")
 
-img_base64 = get_image_as_base64(NOME_ARQUIVO_FUNDO)
-if img_base64:
-    bg_image_data = f"data:image/jpg;base64,{img_base64}"
-    set_background(bg_image_data)
+# Aplica o fundo usando a URL
+if URL_DA_SUA_IMAGEM != "COLE_O_LINK_DIRETO_DA_SUA_IMAGEM_AQUI":
+    set_background(URL_DA_SUA_IMAGEM)
 else:
-    st.warning(f"'{NOME_ARQUIVO_FUNDO}' não encontrado. Usando fundo padrão.")
-    BG_IMAGE_URL = "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1964&auto-format&fit=crop"
-    set_background(BG_IMAGE_URL)
+    # Fallback para a imagem padrão se o link não for alterado
+    set_background("https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1964&auto-format&fit=crop")
+
 
 st.title("📅 Sistema de Agendamento")
 
