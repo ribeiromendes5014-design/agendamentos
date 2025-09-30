@@ -1,2 +1,1 @@
-Data e Hora,Cliente,Serviço,Duração (min),Local,Valor Total,Entrada,Forma de Pagamento,Link do Evento
-2025-09-30 14:00,Ana Silva,Fotos,60,Estúdio Central,300.0,100.0,Pix,https://calendar.google.com/event?eid=...
+Data e Hora Início,Data e Hora Fim,Cliente,Serviço,Duração (min),Local,Endereço,Valor Total,Entrada,Forma de Pagamento,Link do Evento,Status
