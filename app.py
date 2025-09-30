@@ -16,7 +16,7 @@ from googleapiclient.errors import HttpError
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # --- Configurações ---
-CALENDAR_ID = "ribeirodesenvolvedor@gmail.com"
+CALENDAR_ID = "ribeiromendes5016@gmail.com"
 TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN", "YOUR_TELEGRAM_TOKEN_HERE")
 TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 TOPICO_ID = 64
@@ -298,4 +298,5 @@ if service:
             st.info("Nenhum agendamento encontrado no arquivo de backup local.")
 else:
     st.warning("Falha na autenticação com Google Calendar.")
+
 
