@@ -19,14 +19,14 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 # --- Configurações ---
 # ATENÇÃO: Verifique se este é o e-mail correto do seu calendário!
 CALENDAR_ID = "ribeirodesenvolvedor@gmail.com" 
-TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN", "YOUR_TELEGRAM_TOKEN_HERE")
-TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
+TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID")
 TOPICO_ID = 64
 ARQUIVO_CSV = "agendamentos.csv"
 TIMEZONE = 'America/Sao_Paulo'
 
-# --- Link da sua imagem ---
-URL_DA_SUA_IMAGEM = "https://i.imgur.com/U8T9sY6.jpeg"
+# --- Configuração do Fundo (puxado dos secrets) ---
+BACKGROUND_IMAGE_URL = st.secrets.get("BACKGROUND_IMAGE_URL")
 
 def set_background(image_url):
     st.markdown(
@@ -117,11 +117,16 @@ def enviar_mensagem_telegram_agendamento(cliente, data, hora, valor_total, valor
     )
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": mensagem, "parse_mode": "Markdown", "message_thread_id": TOPICO_ID}
-    response = requests.post(url, data=payload)
-    if response.status_code != 200:
-        st.error(f"Erro ao enviar mensagem para o Telegram: {response.json()}")
-    else:
-        st.success("📨 Mensagem enviada para o grupo do Telegram!")
+    if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
+        try:
+            response = requests.post(url, data=payload)
+            if response.status_code != 200:
+                st.error(f"Erro ao enviar mensagem para o Telegram: {response.json()}")
+            else:
+                st.success("📨 Mensagem enviada para o grupo do Telegram!")
+        except Exception as e:
+            st.error(f"Falha ao conectar com o Telegram: {e}")
+
 
 def carregar_agendamentos_csv():
     if os.path.exists(ARQUIVO_CSV):
@@ -163,11 +168,12 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
 # --- App Streamlit ---
 st.set_page_config(page_title="Sistema de Agendamentos", layout="wide")
 
-# Aplica o fundo usando a URL
-if URL_DA_SUA_IMAGEM != "COLE_O_LINK_DIRETO_DA_SUA_IMAGEM_AQUI":
-    set_background(URL_DA_SUA_IMAGEM)
+# Aplica o fundo usando a URL dos secrets ou um fallback
+if BACKGROUND_IMAGE_URL:
+    set_background(BACKGROUND_IMAGE_URL)
 else:
-    # Fallback para a imagem padrão se o link não for alterado
+    # Fallback para a imagem padrão se o secret não for encontrado
+    st.warning("URL da imagem de fundo não foi encontrada nos secrets. Usando imagem padrão.")
     set_background("https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1964&auto-format&fit=crop")
 
 
