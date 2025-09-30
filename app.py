@@ -25,8 +25,8 @@ TOPICO_ID = 64
 ARQUIVO_CSV = "agendamentos.csv"
 TIMEZONE = 'America/Sao_Paulo'
 
-# --- Configuração do Fundo (puxado dos secrets) ---
-BACKGROUND_IMAGE_URL = st.secrets.get("BACKGROUND_IMAGE_URL")
+# --- Configuração do Fundo (Link direto da imagem) ---
+BACKGROUND_IMAGE_URL = "https://i.ibb.co/y4Nd3t3/fundo.jpg"
 
 def set_background(image_url):
     st.markdown(
@@ -168,13 +168,8 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
 # --- App Streamlit ---
 st.set_page_config(page_title="Sistema de Agendamentos", layout="wide")
 
-# Aplica o fundo usando a URL dos secrets ou um fallback
-if BACKGROUND_IMAGE_URL:
-    set_background(BACKGROUND_IMAGE_URL)
-else:
-    # Fallback para a imagem padrão se o secret não for encontrado
-    st.warning("URL da imagem de fundo não foi encontrada nos secrets. Usando imagem padrão.")
-    set_background("https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1964&auto-format&fit=crop")
+# Aplica o fundo usando a URL definida
+set_background(BACKGROUND_IMAGE_URL)
 
 
 st.title("📅 Sistema de Agendamento")
