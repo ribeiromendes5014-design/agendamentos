@@ -37,40 +37,46 @@ def set_background(image_data):
     st.markdown(
         f"""
         <style>
+        /* Cria um pseudo-elemento para segurar o fundo desfocado */
         .stApp::before {{
             content: "";
-            position: fixed;
+            position: fixed; /* Cobre a tela inteira */
             left: 0;
             right: 0;
             top: 0;
             bottom: 0;
-            z-index: -1;
+            z-index: -2; /* Fica atrás de tudo */
             background-image: url("{image_data}");
             background-size: cover;
             background-position: center;
-            filter: blur(8px); /* Aplica o desfoque na imagem de fundo */
-            -webkit-filter: blur(8px);
+            filter: blur(10px); /* Aumenta o desfoque para um efeito mais forte */
+            -webkit-filter: blur(10px);
         }}
 
+        /* Container principal do conteúdo com o efeito "vidro fosco" */
         [data-testid="stAppViewContainer"] > .main .block-container {{
-            background-color: rgba(255, 255, 255, 0.95); /* Aumenta a opacidade para garantir legibilidade */
+            background-color: rgba(255, 255, 255, 0.75); /* Reduz a opacidade para o efeito ser visível */
             border-radius: 15px;
             padding: 2rem;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(5px); /* Efeito de vidro fosco no próprio container */
+            -webkit-backdrop-filter: blur(5px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.18);
         }}
 
-        /* Sombra de texto para melhor legibilidade */
+        /* Sombra de texto para melhorar a legibilidade */
         .stApp, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp p, .stApp li {{
-            text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
+            text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2);
         }}
 
+        /* Garante que o header e as abas não tenham fundo sólido */
         [data-testid="stHeader"], [data-testid="stTabs"] {{
-            background-color: transparent;
+            background: transparent;
         }}
         
+        /* Ajusta o fundo dos expanders para combinar */
         [data-testid="stExpander"] {{
-            background-color: rgba(240, 242, 246, 0.85);
+            background-color: rgba(240, 242, 246, 0.80);
             border-radius: 10px;
         }}
         </style>
