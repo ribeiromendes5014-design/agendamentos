@@ -129,7 +129,8 @@ if service:
                 data_hora_fim = datetime.combine(data_fim_input, hora_fim_input)
     else:  # 'Definir Duração'
         with col2:
-            duracao_minutos = st.number_input("⏳ Duração (em minutos)", min_value=15, value=60, step=15)
+            # --- MUDANÇA: min_value alterado para 1 ---
+            duracao_minutos = st.number_input("⏳ Duração (em minutos)", min_value=1, value=60, step=1)
             if data_inicio and hora_inicio:
                 data_hora_inicio_preview = datetime.combine(data_inicio, hora_inicio)
                 data_hora_fim_preview = data_hora_inicio_preview + timedelta(minutes=duracao_minutos)
