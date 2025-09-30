@@ -16,6 +16,8 @@ from googleapiclient.errors import HttpError
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # --- Configurações ---
+# CORREÇÃO: Calendar ID agora é uma variável para fácil modificação.
+CALENDAR_ID = "ribeirmendes5016@gmail.com"
 TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN", "YOUR_TELEGRAM_TOKEN_HERE")
 TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 TOPICO_ID = 64
@@ -60,8 +62,8 @@ def criar_evento_google_calendar(service, info_evento):
         'reminders': reminders,
     }
     try:
-        calendar_id = 'primary'
-        evento_criado = service.events().insert(calendarId=calendar_id, body=evento).execute()
+        # IMPORTANTE: A conta de serviço precisa ter permissão de "Fazer alterações nos eventos" neste calendário.
+        evento_criado = service.events().insert(calendarId=CALENDAR_ID, body=evento).execute()
         return evento_criado.get('htmlLink')
     except HttpError as error:
         st.error(f"Erro na API do Google Calendar: {error}")
@@ -105,7 +107,7 @@ def parse_google_events(events):
         cliente, servico = (summary.split(' - ') + ['N/A'])[:2]
 
         lista_eventos.append({
-            'Data e Hora Início': pd.to_datetime(start).tz_convert(TIMEZONE).tz_localize(None), # Remove tz info for display
+            'Data e Hora Início': pd.to_datetime(start).tz_convert(TIMEZONE).tz_localize(None),
             'Data e Hora Fim': pd.to_datetime(end).tz_convert(TIMEZONE).tz_localize(None),
             'Cliente': cliente,
             'Serviço': servico,
@@ -122,13 +124,14 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
             time_min = now.isoformat()
             time_max = None
             order_by = 'startTime'
-        else: # periodo == "passado"
+        else:
             time_max = now.isoformat()
             time_min = (now - timedelta(days=dias)).isoformat()
             order_by = 'startTime'
 
+        # IMPORTANTE: A conta de serviço precisa ter permissão de "Ver todos os detalhes de eventos" neste calendário.
         events_result = service.events().list(
-            calendarId='primary',
+            calendarId=CALENDAR_ID,
             timeMin=time_min,
             timeMax=time_max,
             maxResults=250,
@@ -241,7 +244,6 @@ if service:
             st.dataframe(df_display_futuros, use_container_width=True, hide_index=True)
 
         st.markdown("---")
-        # Seção de passados (do Google Calendar) com expander
         with st.expander("Consultar Histórico Recente do Google Calendar (Últimos 90 dias)"):
             if df_passados.empty:
                 st.info("Nenhum evento encontrado no período no Google Calendar.")
@@ -252,7 +254,6 @@ if service:
                 st.dataframe(df_display_passados, use_container_width=True, hide_index=True)
 
         st.markdown("---")
-        # Seção de backup local
         with st.expander("Consultar Backup Local (arquivo agendamentos.csv)"):
             df_csv = carregar_agendamentos_csv()
             if df_csv.empty:
