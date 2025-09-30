@@ -134,7 +134,6 @@ if service:
         
         st.markdown("---")
         
-        # --- NOVO: Opção de escolha para definir o término ---
         metodo_termino = st.radio(
             "Como deseja definir o término do evento?",
             ('Definir Duração', 'Manualmente'),
@@ -147,7 +146,6 @@ if service:
             data_inicio = st.date_input("📆 Data de Início")
             hora_inicio = st.time_input("⏰ Horário de Início")
         
-        # --- Lógica condicional para exibir os campos de término ---
         if metodo_termino == 'Manualmente':
             with col2:
                 data_fim = st.date_input("📆 Data de Fim")
@@ -155,6 +153,12 @@ if service:
         else: # 'Definir Duração'
             with col2:
                 duracao_minutos = st.number_input("⏳ Duração (em minutos)", min_value=15, value=60, step=15)
+                # --- NOVO: Mostra o horário de término calculado ---
+                if data_inicio and hora_inicio:
+                    data_hora_inicio_preview = datetime.combine(data_inicio, hora_inicio)
+                    data_hora_fim_preview = data_hora_inicio_preview + timedelta(minutes=duracao_minutos)
+                    st.markdown(f"**Término calculado:** {data_hora_fim_preview.strftime('%d/%m/%Y às %H:%M')}")
+
 
         st.markdown("---")
         st.subheader("Lembretes")
@@ -184,7 +188,6 @@ if service:
         submitted = st.form_submit_button("Agendar Evento")
         
         if submitted:
-            # --- Lógica atualizada para calcular a data/hora de fim ---
             data_hora_inicio = datetime.combine(data_inicio, hora_inicio)
             
             if metodo_termino == 'Manualmente':
@@ -263,3 +266,4 @@ if service:
                         st.error(f"Erro ao salvar o arquivo CSV: {e}")
 else:
     st.warning("Falha na autenticação com Google Calendar. Verifique as credenciais no `secrets.toml` e as permissões do calendário.")
+
