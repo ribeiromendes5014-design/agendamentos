@@ -16,8 +16,8 @@ from googleapiclient.errors import HttpError
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # --- Configurações ---
-# CORREÇÃO: Calendar ID agora é uma variável para fácil modificação.
-CALENDAR_ID = "ribeirmendes5016@gmail.com"
+# CORREÇÃO: O ID do calendário foi corrigido para o e-mail correto.
+CALENDAR_ID = "ribeirodesenvolvedor@gmail.com"
 TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN", "YOUR_TELEGRAM_TOKEN_HERE")
 TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 TOPICO_ID = 64
@@ -66,7 +66,7 @@ def criar_evento_google_calendar(service, info_evento):
         evento_criado = service.events().insert(calendarId=CALENDAR_ID, body=evento).execute()
         return evento_criado.get('htmlLink')
     except HttpError as error:
-        st.error(f"Erro na API do Google Calendar: {error}")
+        st.error(f"Erro na API do Google Calendar: {error}. Verifique se o CALENDAR_ID está correto e se a conta de serviço tem permissão.")
     return None
 
 
@@ -141,7 +141,7 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
         events = events_result.get('items', [])
         return parse_google_events(events)
     except HttpError as error:
-        st.error(f"Erro ao buscar eventos do Google Calendar: {error}")
+        st.error(f"Erro ao buscar eventos do Google Calendar: {error}. Verifique se o CALENDAR_ID está correto e se a conta de serviço tem permissão.")
     return pd.DataFrame()
 
 
