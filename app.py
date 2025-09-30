@@ -20,6 +20,7 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN", "YOUR_TELEGRAM_TOKEN_HERE")
 TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 TOPICO_ID = 64  # ID do tópico (thread) no grupo Telegram
+ARQUIVO_CSV = "agendamentos.csv"
 
 
 def get_google_calendar_service():
@@ -93,122 +94,149 @@ def enviar_mensagem_telegram_agendamento(cliente, data, hora, valor_total, valor
         st.success("📨 Mensagem de confirmação enviada para o grupo do Telegram!")
 
 
+def carregar_agendamentos():
+    """Carrega os agendamentos do arquivo CSV, se existir."""
+    if os.path.exists(ARQUIVO_CSV):
+        return pd.read_csv(ARQUIVO_CSV)
+    return pd.DataFrame()
+
+
 # --- App Streamlit ---
 st.set_page_config(page_title="Sistema de Agendamentos", layout="centered")
-st.title("📅 Sistema de Agendamento com Google Calendar")
+st.title("📅 Sistema de Agendamento")
 
 service = get_google_calendar_service()
 
 if service:
-    st.subheader("Informações do Agendamento")
-    cliente = st.text_input("👤 Nome do Cliente")
-    tipo_servico = st.text_input("🛠 Tipo de Serviço (ex: Sessão de Fotos, Consultoria)")
-    local = st.text_input("📍 Local")
-    endereco = st.text_input("Endereço completo (opcional)")
-    st.markdown("---")
+    tab1, tab2 = st.tabs(["➕ Novo Agendamento", "📋 Consultar Agendamentos"])
 
-    metodo_termino = st.radio(
-        "Como deseja definir o término do evento?",
-        ('Definir Duração', 'Manualmente'),
-        horizontal=True,
-        index=0
-    )
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        data_inicio = st.date_input("📆 Data de Início")
-        hora_inicio = st.time_input("⏰ Horário de Início")
-    
-    data_hora_fim = None  # Inicializa a variável
+    # --- ABA DE NOVO AGENDAMENTO ---
+    with tab1:
+        st.subheader("Informações do Agendamento")
+        cliente = st.text_input("👤 Nome do Cliente")
+        tipo_servico = st.text_input("🛠 Tipo de Serviço (ex: Sessão de Fotos, Consultoria)")
+        local = st.text_input("📍 Local")
+        endereco = st.text_input("Endereço completo (opcional)")
+        st.markdown("---")
 
-    if metodo_termino == 'Manualmente':
-        with col2:
-            data_fim_input = st.date_input("📆 Data de Fim")
-            hora_fim_input = st.time_input("⏰ Horário de Fim")
-            if data_fim_input and hora_fim_input:
-                data_hora_fim = datetime.combine(data_fim_input, hora_fim_input)
-    else:  # 'Definir Duração'
-        with col2:
-            # --- MUDANÇA: min_value alterado para 1 ---
-            duracao_minutos = st.number_input("⏳ Duração (em minutos)", min_value=1, value=60, step=1)
-            if data_inicio and hora_inicio:
-                data_hora_inicio_preview = datetime.combine(data_inicio, hora_inicio)
-                data_hora_fim_preview = data_hora_inicio_preview + timedelta(minutes=duracao_minutos)
-                st.markdown(f"**Término calculado:** {data_hora_fim_preview.strftime('%d/%m/%Y às %H:%M')}")
-                data_hora_fim = data_hora_fim_preview
-
-    st.markdown("---")
-    st.subheader("Lembretes")
-    lembrete_opcoes = {
-        "15 minutos antes": 15, "30 minutos antes": 30, "1 hora antes": 60,
-        "2 horas antes": 120, "1 dia antes": 1440
-    }
-    lembretes_selecionados = st.multiselect("🔔 Quero ser alertado:", list(lembrete_opcoes.keys()), default=["15 minutos antes"])
-    lembretes_minutos = [lembrete_opcoes[l] for l in lembretes_selecionados]
-    
-    st.markdown("---")
-    st.subheader("Informações Financeiras")
-    valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, value=100.0, step=10.0, format="%.2f")
-    
-    entrada = st.checkbox("✅ Houve entrada de dinheiro?")
-    valor_entrada_input = 0.0
-    forma_pagamento_input = "Não houve entrada"
-    if entrada:
-        valor_entrada_input = st.number_input("💵 Valor da Entrada (R$)", min_value=0.0, max_value=valor_total, step=10.0, format="%.2f")
-        forma_pagamento_input = st.selectbox("💳 Forma de Pagamento", ["Pix", "Dinheiro", "Cartão", "Transferência", "Outro"])
-
-    st.markdown("---")
-    submitted = st.button("Agendar Evento", type="primary")
-    
-    if submitted:
-        data_hora_inicio = datetime.combine(data_inicio, hora_inicio)
+        metodo_termino = st.radio(
+            "Como deseja definir o término do evento?",
+            ('Definir Duração', 'Manualmente'),
+            horizontal=True, index=0
+        )
         
-        if data_hora_fim is None:
-            st.error("Por favor, defina um horário de término válido.")
-            st.stop()
-
-        valor_entrada = valor_entrada_input if entrada else 0.0
-        forma_pagamento = forma_pagamento_input if entrada else "Não houve entrada"
+        col1, col2 = st.columns(2)
+        with col1:
+            data_inicio = st.date_input("📆 Data de Início")
+            hora_inicio = st.time_input("⏰ Horário de Início")
         
-        if not all([cliente, tipo_servico, local]):
-            st.error("Os campos 'Nome do Cliente', 'Tipo de Serviço' e 'Local' são obrigatórios.")
-        elif data_hora_inicio >= data_hora_fim:
-            st.error("A data/hora de início deve ser anterior à data/hora de fim.")
+        data_hora_fim = None
+        if metodo_termino == 'Manualmente':
+            with col2:
+                data_fim_input = st.date_input("📆 Data de Fim")
+                hora_fim_input = st.time_input("⏰ Horário de Fim")
+                if data_fim_input and hora_fim_input:
+                    data_hora_fim = datetime.combine(data_fim_input, hora_fim_input)
         else:
-            duracao_total_minutos = (data_hora_fim - data_hora_inicio).total_seconds() / 60
-            dados = {
-                "cliente": cliente, "tipo_servico": tipo_servico, "local": local,
-                "endereco": endereco, "data_hora_inicio": data_hora_inicio,
-                "data_hora_fim": data_hora_fim, "valor_total": valor_total,
-                "valor_entrada": valor_entrada, "forma_pagamento": forma_pagamento,
-                "lembretes_minutos": lembretes_minutos
-            }
+            with col2:
+                duracao_minutos = st.number_input("⏳ Duração (em minutos)", min_value=1, value=60, step=1)
+                if data_inicio and hora_inicio:
+                    data_hora_inicio_preview = datetime.combine(data_inicio, hora_inicio)
+                    data_hora_fim_preview = data_hora_inicio_preview + timedelta(minutes=duracao_minutos)
+                    st.markdown(f"**Término calculado:** {data_hora_fim_preview.strftime('%d/%m/%Y às %H:%M')}")
+                    data_hora_fim = data_hora_fim_preview
+
+        st.markdown("---")
+        st.subheader("Lembretes")
+        lembretes_opcoes = {
+            "15 minutos antes": 15, "30 minutos antes": 30, "1 hora antes": 60,
+            "2 horas antes": 120, "1 dia antes": 1440
+        }
+        lembretes_selecionados = st.multiselect("🔔 Quero ser alertado:", list(lembrete_opcoes.keys()), default=["15 minutos antes"])
+        lembretes_minutos = [lembrete_opcoes[l] for l in lembretes_selecionados]
+        
+        st.markdown("---")
+        st.subheader("Informações Financeiras")
+        valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, value=100.0, step=10.0, format="%.2f")
+        
+        entrada = st.checkbox("✅ Houve entrada de dinheiro?")
+        valor_entrada_input = 0.0
+        forma_pagamento_input = "Não houve entrada"
+        if entrada:
+            valor_entrada_input = st.number_input("💵 Valor da Entrada (R$)", min_value=0.0, max_value=valor_total, step=10.0, format="%.2f")
+            forma_pagamento_input = st.selectbox("💳 Forma de Pagamento", ["Pix", "Dinheiro", "Cartão", "Transferência", "Outro"])
+
+        st.markdown("---")
+        if st.button("Agendar Evento", type="primary"):
+            data_hora_inicio = datetime.combine(data_inicio, hora_inicio)
             
-            with st.spinner("Criando evento no Google Calendar..."):
-                link_evento = criar_evento_google_calendar(service, dados)
-            
-            if link_evento:
-                st.success("✅ Agendamento criado com sucesso no Google Calendar!")
-                st.markdown(f"[📅 Ver no Google Calendar]({link_evento})")
-                enviar_mensagem_telegram_agendamento(
-                    cliente, data_inicio, hora_inicio, valor_total, valor_entrada, tipo_servico)
-                
-                linha = {
-                    "Data e Hora Início": data_hora_inicio.strftime("%Y-%m-%d %H:%M"),
-                    "Data e Hora Fim": data_hora_fim.strftime("%Y-%m-%d %H:%M"),
-                    "Cliente": cliente, "Serviço": tipo_servico,
-                    "Duração (min)": duracao_total_minutos, "Local": local, "Endereço": endereco,
-                    "Valor Total": valor_total, "Entrada": valor_entrada,
-                    "Forma de Pagamento": forma_pagamento, "Link do Evento": link_evento,
+            if data_hora_fim is None:
+                st.error("Por favor, defina um horário de término válido.")
+            elif not all([cliente, tipo_servico, local]):
+                st.error("Os campos 'Nome do Cliente', 'Tipo de Serviço' e 'Local' são obrigatórios.")
+            elif data_hora_inicio >= data_hora_fim:
+                st.error("A data/hora de início deve ser anterior à data/hora de fim.")
+            else:
+                duracao_total_minutos = (data_hora_fim - data_hora_inicio).total_seconds() / 60
+                dados = {
+                    "cliente": cliente, "tipo_servico": tipo_servico, "local": local,
+                    "endereco": endereco, "data_hora_inicio": data_hora_inicio,
+                    "data_hora_fim": data_hora_fim, "valor_total": valor_total,
+                    "valor_entrada": valor_entrada_input if entrada else 0.0,
+                    "forma_pagamento": forma_pagamento_input if entrada else "Não houve entrada",
+                    "lembretes_minutos": lembretes_minutos
                 }
-                arquivo_csv = "agendamentos.csv"
-                try:
-                    df_existente = pd.read_csv(arquivo_csv) if os.path.exists(arquivo_csv) else pd.DataFrame()
+                
+                with st.spinner("Criando evento no Google Calendar..."):
+                    link_evento = criar_evento_google_calendar(service, dados)
+                
+                if link_evento:
+                    st.success("✅ Agendamento criado com sucesso no Google Calendar!")
+                    st.markdown(f"[📅 Ver no Google Calendar]({link_evento})")
+                    enviar_mensagem_telegram_agendamento(
+                        cliente, data_inicio, hora_inicio, valor_total, dados["valor_entrada"], tipo_servico)
+                    
+                    linha = {
+                        "Data e Hora Início": data_hora_inicio.strftime("%Y-%m-%d %H:%M"),
+                        "Data e Hora Fim": data_hora_fim.strftime("%Y-%m-%d %H:%M"),
+                        "Cliente": cliente, "Serviço": tipo_servico,
+                        "Duração (min)": duracao_total_minutos, "Local": local, "Endereço": endereco,
+                        "Valor Total": valor_total, "Entrada": dados["valor_entrada"],
+                        "Forma de Pagamento": dados["forma_pagamento"], "Link do Evento": link_evento,
+                    }
+                    
+                    df_existente = carregar_agendamentos()
                     df_novo = pd.concat([df_existente, pd.DataFrame([linha])], ignore_index=True)
-                    df_novo.to_csv(arquivo_csv, index=False)
-                    st.info(f"💾 Agendamento salvo em '{arquivo_csv}'.")
-                except Exception as e:
-                    st.error(f"Erro ao salvar o arquivo CSV: {e}")
+                    df_novo.to_csv(ARQUIVO_CSV, index=False)
+                    st.info(f"💾 Agendamento salvo em '{ARQUIVO_CSV}'.")
+
+    # --- ABA DE CONSULTA DE AGENDAMENTOS ---
+    with tab2:
+        st.subheader("Próximo Agendamento")
+        df = carregar_agendamentos()
+
+        if df.empty:
+            st.info("Nenhum agendamento encontrado.")
+        else:
+            df['Data e Hora Início'] = pd.to_datetime(df['Data e Hora Início'])
+            agora = datetime.now()
+            
+            proximos_df = df[df['Data e Hora Início'] > agora].sort_values(by='Data e Hora Início')
+
+            if proximos_df.empty:
+                st.success("🎉 Nenhum agendamento futuro. Você está livre!")
+            else:
+                proximo = proximos_df.iloc[0]
+                with st.container(border=True):
+                    st.markdown(f"##### 👤 **Cliente:** {proximo['Cliente']}")
+                    st.markdown(f"**🛠️ Serviço:** {proximo['Serviço']}")
+                    st.markdown(f"**🗓️ Data:** {proximo['Data e Hora Início'].strftime('%d/%m/%Y às %H:%M')}")
+                    st.markdown(f"**📍 Local:** {proximo['Local']}")
+
+            st.markdown("---")
+            st.subheader("Todos os Agendamentos")
+            st.dataframe(df.sort_values(by='Data e Hora Início', ascending=False), use_container_width=True)
+
 else:
     st.warning("Falha na autenticação com Google Calendar. Verifique as credenciais no `secrets.toml` e as permissões do calendário.")
 
