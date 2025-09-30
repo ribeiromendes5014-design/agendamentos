@@ -16,7 +16,7 @@ from googleapiclient.errors import HttpError
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # --- Configurações ---
-CALENDAR_ID = "ribeiromendes5016@gmail.com"
+CALENDAR_ID = "ribeirodesenvolvedor@gmail.com"
 TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN", "YOUR_TELEGRAM_TOKEN_HERE")
 TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 TOPICO_ID = 64
@@ -90,7 +90,6 @@ def carregar_agendamentos_csv():
     """Carrega os agendamentos do arquivo CSV, garantindo a coluna 'Status'."""
     if os.path.exists(ARQUIVO_CSV):
         df = pd.read_csv(ARQUIVO_CSV)
-        # Garante que a coluna Status exista para compatibilidade com arquivos antigos
         if 'Status' not in df.columns:
             df['Status'] = 'Pendente'
         return df
@@ -109,6 +108,7 @@ def parse_google_events(events):
             'Data e Hora Início': pd.to_datetime(start).tz_convert(TIMEZONE).tz_localize(None),
             'Data e Hora Fim': pd.to_datetime(end).tz_convert(TIMEZONE).tz_localize(None),
             'Cliente': cliente, 'Serviço': servico, 'Local': event.get('location', 'N/A'),
+            'ID Evento Google': event.get('id') # Adicionado para checagem
         })
     return pd.DataFrame(lista_eventos)
 
@@ -117,7 +117,7 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
     """Puxa eventos futuros ou passados do Google Calendar."""
     try:
         now = datetime.now(pytz.timezone(TIMEZONE))
-        params = {'calendarId': CALENDAR_ID, 'maxResults': 250, 'singleEvents': True, 'orderBy': 'startTime'}
+        params = {'calendarId': CALENDAR_ID, 'maxResults': 2500, 'singleEvents': True, 'orderBy': 'startTime'}
         if periodo == "futuro":
             params['timeMin'] = now.isoformat()
         else:
@@ -128,6 +128,51 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
     except HttpError as error:
         st.error(f"Erro ao buscar eventos do Google Calendar: {error}.")
         return pd.DataFrame()
+
+
+def sincronizar_google_para_csv(service):
+    """Busca eventos passados do Google e os adiciona ao CSV se não existirem."""
+    with st.spinner("Buscando eventos passados do Google Calendar... Isso pode levar um momento."):
+        df_google = puxar_eventos_google_calendar(service, periodo="passado", dias=365)
+    
+    if df_google.empty:
+        st.warning("Nenhum evento passado encontrado no Google Calendar para sincronizar.")
+        return
+
+    df_csv_existente = carregar_agendamentos_csv()
+    novas_linhas = []
+    
+    # Cria um conjunto de identificadores únicos para os eventos já existentes no CSV
+    ids_existentes = set()
+    if not df_csv_existente.empty and 'Data e Hora Início' in df_csv_existente.columns and 'Cliente' in df_csv_existente.columns:
+        ids_existentes = set(pd.to_datetime(df_csv_existente['Data e Hora Início']).dt.strftime('%Y-%m-%d %H:%M') + df_csv_existente['Cliente'])
+
+    for _, row in df_google.iterrows():
+        # Cria um identificador para o evento do Google
+        id_google = row['Data e Hora Início'].strftime('%Y-%m-%d %H:%M') + row['Cliente']
+        
+        # Se o evento não estiver no CSV, prepara para adicionar
+        if id_google not in ids_existentes:
+            linha = {
+                "Data e Hora Início": row['Data e Hora Início'].strftime("%Y-%m-%d %H:%M"),
+                "Data e Hora Fim": row['Data e Hora Fim'].strftime("%Y-%m-%d %H:%M"),
+                "Cliente": row['Cliente'], "Serviço": row['Serviço'],
+                "Duração (min)": (row['Data e Hora Fim'] - row['Data e Hora Início']).total_seconds() / 60,
+                "Local": row.get('Local', 'N/A'), "Endereço": "", "Valor Total": 0.0,
+                "Entrada": 0.0, "Forma de Pagamento": "N/A", "Link do Evento": "",
+                "Status": "Concluído"
+            }
+            novas_linhas.append(linha)
+    
+    if not novas_linhas:
+        st.success("Seu arquivo CSV já está sincronizado com o histórico do Google Calendar!")
+        return
+
+    df_novas_linhas = pd.DataFrame(novas_linhas)
+    df_atualizado = pd.concat([df_csv_existente, df_novas_linhas], ignore_index=True)
+    df_atualizado.to_csv(ARQUIVO_CSV, index=False)
+    st.success(f"{len(novas_linhas)} agendamentos passados foram importados para o arquivo CSV!")
+    st.rerun()
 
 
 # --- App Streamlit ---
@@ -141,6 +186,7 @@ if service:
     tab1, tab2 = st.tabs(["➕ Novo Agendamento", "📋 Consultar Agendamentos"])
 
     with tab1:
+        # ... (código para novo agendamento, sem alterações) ...
         st.subheader("Informações do Agendamento")
         cliente = st.text_input("👤 Nome do Cliente")
         tipo_servico = st.text_input("🛠 Tipo de Serviço (ex: Sessão de Fotos)")
@@ -191,8 +237,8 @@ if service:
 
     with tab2:
         st.header("🗓️ Seus Compromissos")
-        # Visualização do Google Calendar
         with st.expander("Visualizar Agendamentos do Google Calendar", expanded=True):
+            # ... (código de visualização do Google, sem alterações) ...
             df_futuros = puxar_eventos_google_calendar(service, periodo="futuro")
             if not df_futuros.empty:
                 st.subheader("Próximo Agendamento")
@@ -206,9 +252,13 @@ if service:
                 st.dataframe(df_futuros.assign(**{'Data e Hora Início': lambda df: df['Data e Hora Início'].dt.strftime('%d/%m/%Y %H:%M'), 'Data e Hora Fim': lambda df: df['Data e Hora Fim'].dt.strftime('%d/%m/%Y %H:%M')}), use_container_width=True, hide_index=True)
             else: st.info("Nenhum agendamento futuro encontrado no Google Calendar.")
         
-        # Gerenciamento de Tarefas do CSV
         st.markdown("---")
         st.header("✔️ Gerenciar Tarefas (Backup Local)")
+        
+        # --- NOVO BOTÃO DE SINCRONIZAÇÃO ---
+        if st.button("Sincronizar Histórico do Google Calendar para CSV"):
+            sincronizar_google_para_csv(service)
+        
         df_csv = carregar_agendamentos_csv()
         if not df_csv.empty:
             df_pendentes = df_csv[df_csv['Status'] == 'Pendente']
@@ -218,15 +268,25 @@ if service:
             if df_pendentes.empty:
                 st.success("🎉 Nenhuma tarefa pendente!")
             else:
+                # ... (código de gerenciamento de tarefas, sem alterações) ...
                 for index, row in df_pendentes.iterrows():
                     with st.container(border=True):
                         col1, col2 = st.columns([3, 1])
-                        col1.markdown(f"**Cliente:** {row['Cliente']} | **Serviço:** {row['Serviço']}\n\n"
-                                      f"**Data:** {pd.to_datetime(row['Data e Hora Início']).strftime('%d/%m/%Y às %H:%M')}")
+                        cliente_info = row.get('Cliente', 'N/A')
+                        servico_info = row.get('Serviço', 'N/A')
+                        data_info = "Data não informada"
+                        if 'Data e Hora Início' in row and pd.notna(row['Data e Hora Início']):
+                            try:
+                                data_info = pd.to_datetime(row['Data e Hora Início']).strftime('%d/%m/%Y às %H:%M')
+                            except (ValueError, TypeError):
+                                data_info = "Data em formato inválido"
+                        
+                        col1.markdown(f"**Cliente:** {cliente_info} | **Serviço:** {servico_info}\n\n"
+                                      f"**Data:** {data_info}")
                         if col2.button("✅ Concluir", key=f"concluir_{index}", use_container_width=True):
                             df_csv.loc[index, 'Status'] = 'Concluído'
                             df_csv.to_csv(ARQUIVO_CSV, index=False)
-                            st.toast(f"Tarefa de {row['Cliente']} concluída!")
+                            st.toast(f"Tarefa de {cliente_info} concluída!")
                             st.rerun()
 
             with st.expander("Ver Histórico de Tarefas Concluídas"):
