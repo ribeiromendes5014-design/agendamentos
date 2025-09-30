@@ -29,23 +29,24 @@ TIMEZONE = 'America/Sao_Paulo'
 BACKGROUND_IMAGE_URL = "https://i.ibb.co/cWJpWGm/background.jpg"
 
 def set_background(image_url):
-    # CSS corrigido para garantir que o fundo fique sempre visível
     st.markdown(
         f"""
         <style>
         .stApp::before {{
             content: "";
             position: fixed;
-            left: 0; right: 0; top: 0; bottom: 0;
-            z-index: -1; /* Garante que o fundo fique sempre atrás de todo o conteúdo */
+            top: 0; left: 0; right: 0; bottom: 0;
             background-image: url("{image_url}");
             background-size: cover;
             background-position: center;
             filter: blur(8px);
             -webkit-filter: blur(8px);
+            z-index: 0; /* fundo */
         }}
         [data-testid="stAppViewContainer"] > .main .block-container {{
-            background-color: rgba(255, 255, 255, 0.9);
+            position: relative;
+            z-index: 1; /* fica por cima do blur */
+            background-color: rgba(255, 255, 255, 0.85);
             border-radius: 15px;
             padding: 2rem;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
@@ -53,10 +54,15 @@ def set_background(image_url):
         [data-testid="stHeader"], [data-testid="stTabs"] {{
             background: transparent;
         }}
+        [data-testid="stExpander"] {{
+            background-color: rgba(240, 242, 246, 0.90);
+            border-radius: 10px;
+        }}
         </style>
         """,
         unsafe_allow_html=True
     )
+
 
 def get_google_calendar_service():
     try:
@@ -281,5 +287,6 @@ if service:
             st.info("Nenhum agendamento no arquivo de backup.")
 else:
     st.warning("Falha na autenticação com Google Calendar.")
+
 
 
