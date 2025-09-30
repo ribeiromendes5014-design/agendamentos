@@ -26,7 +26,7 @@ ARQUIVO_CSV = "agendamentos.csv"
 TIMEZONE = 'America/Sao_Paulo'
 
 # --- Configuração do Fundo (Link direto da imagem) ---
-BACKGROUND_IMAGE_URL = "https://ibb.co/cWJpWGm/minha-foto.jpg"
+BACKGROUND_IMAGE_URL = "https://i.ibb.co/7YpYk5B/minha-foto.jpg"
 
 def set_background(image_url):
     st.markdown(
@@ -287,6 +287,7 @@ if service:
             st.info("Nenhum agendamento no arquivo de backup.")
 else:
     st.warning("Falha na autenticação com Google Calendar.")
+
 
 
 
