@@ -29,6 +29,7 @@ TIMEZONE = 'America/Sao_Paulo'
 BACKGROUND_IMAGE_URL = "https://i.ibb.co/y4Nd3t3/fundo.jpg"
 
 def set_background(image_url):
+    # CSS simplificado e mais robusto para garantir a visibilidade
     st.markdown(
         f"""
         <style>
@@ -36,30 +37,25 @@ def set_background(image_url):
             content: "";
             position: fixed;
             left: 0; right: 0; top: 0; bottom: 0;
-            z-index: -2;
+            z-index: -1; /* Fica atrás de tudo */
             background-image: url("{image_url}");
             background-size: cover;
             background-position: center;
-            filter: blur(10px);
-            -webkit-filter: blur(10px);
+            filter: blur(8px);
+            -webkit-filter: blur(8px);
         }}
         [data-testid="stAppViewContainer"] > .main .block-container {{
-            background-color: rgba(255, 255, 255, 0.75);
+            background-color: rgba(255, 255, 255, 0.95); /* Fundo quase opaco para garantir legibilidade */
             border-radius: 15px;
             padding: 2rem;
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
             border: 1px solid rgba(255, 255, 255, 0.18);
-        }}
-        .stApp, .stApp h1, .stApp h2, .stApp h3, .stApp p, .stApp li {{
-            text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2);
         }}
         [data-testid="stHeader"], [data-testid="stTabs"] {{
             background: transparent;
         }}
         [data-testid="stExpander"] {{
-            background-color: rgba(240, 242, 246, 0.80);
+            background-color: rgba(240, 242, 246, 0.90);
             border-radius: 10px;
         }}
         </style>
@@ -168,9 +164,7 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
 # --- App Streamlit ---
 st.set_page_config(page_title="Sistema de Agendamentos", layout="wide")
 
-# Aplica o fundo usando a URL definida
 set_background(BACKGROUND_IMAGE_URL)
-
 
 st.title("📅 Sistema de Agendamento")
 
