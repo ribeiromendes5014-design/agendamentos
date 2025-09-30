@@ -28,8 +28,6 @@ TIMEZONE = 'America/Sao_Paulo'
 # --- Configuração do Fundo (Link direto da imagem) ---
 BACKGROUND_IMAGE_URL = "https://i.ibb.co/QfY9vgV/background.jpg"
 
-set_background(BACKGROUND_IMAGE_URL)
-
 def set_background(image_url):
     st.markdown(
         f"""
@@ -37,8 +35,8 @@ def set_background(image_url):
         .stApp::before {{
             content: "";
             position: fixed;
-            left: 0; right: 0; top: 0; bottom: 0;
-            z-index: 0; /* fundo visível */
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
             background-image: url("{image_url}");
             background-size: cover;
             background-position: center;
@@ -47,19 +45,11 @@ def set_background(image_url):
         }}
         [data-testid="stAppViewContainer"] > .main .block-container {{
             position: relative;
-            z-index: 1; /* fica por cima do fundo */
-            background-color: rgba(255, 255, 255, 0.9); /* ajuste de opacidade */
+            z-index: 1;
+            background-color: rgba(255, 255, 255, 0.9);
             border-radius: 15px;
             padding: 2rem;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-        }}
-        [data-testid="stHeader"], [data-testid="stTabs"] {{
-            background: transparent;
-        }}
-        [data-testid="stExpander"] {{
-            background-color: rgba(240, 242, 246, 0.90);
-            border-radius: 10px;
         }}
         </style>
         """,
@@ -289,6 +279,7 @@ if service:
             st.info("Nenhum agendamento no arquivo de backup.")
 else:
     st.warning("Falha na autenticação com Google Calendar.")
+
 
 
 
