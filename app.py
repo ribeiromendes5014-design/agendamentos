@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import streamlit as st
 from datetime import datetime, timedelta
 import pandas as pd
@@ -281,6 +280,7 @@ if service:
             st.info("Nenhum agendamento no arquivo de backup.")
 else:
     st.warning("Falha na autenticação com Google Calendar.")
+
 
 
 
