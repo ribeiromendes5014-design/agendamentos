@@ -6,7 +6,7 @@ import os
 import json
 import pytz
 import requests
-import base64 # Importado para converter a imagem local
+import base64 
 
 # Google Calendar
 from google.oauth2 import service_account
@@ -23,12 +23,9 @@ TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 TOPICO_ID = 64
 ARQUIVO_CSV = "agendamentos.csv"
 TIMEZONE = 'America/Sao_Paulo'
-NOME_ARQUIVO_FUNDO = "background.jpg" # Nome do arquivo da sua foto
+NOME_ARQUIVO_FUNDO = "background.jpg"
 
 def get_image_as_base64(file):
-    """
-    Função para ler uma imagem local e convertê-la para base64.
-    """
     if os.path.exists(file):
         with open(file, "rb") as f:
             data = f.read()
@@ -36,35 +33,49 @@ def get_image_as_base64(file):
     return None
 
 def set_background(image_data):
-    """
-    Função para configurar um plano de fundo customizado com CSS.
-    Pode receber uma URL ou dados em base64.
-    """
     st.markdown(
         f"""
         <style>
         .stApp {{
+            position: relative;
+        }}
+
+        .stApp::before {{
+            content: "";
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            z-index: -1;
             background-image: url("{image_data}");
-            background-attachment: fixed;
             background-size: cover;
             background-position: center;
+            filter: blur(8px); /* Aplica o desfoque na imagem de fundo */
+            -webkit-filter: blur(8px);
         }}
+
         [data-testid="stAppViewContainer"] > .main .block-container {{
-            background-color: rgba(255, 255, 255, 0.85);
-            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.90); /* Aumenta a opacidade */
+            border-radius: 15px; /* Bordas mais arredondadas */
             padding: 2rem;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            backdrop-filter: blur(5px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
         }}
-        [data-testid="stHeader"] {{
+
+        /* Sombra de texto para melhor legibilidade */
+        .stApp, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp p, .stApp li {{
+            text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2);
+        }}
+
+        [data-testid="stHeader"], [data-testid="stTabs"] {{
             background-color: transparent;
         }}
+        
         [data-testid="stExpander"] {{
-            background-color: rgba(240, 242, 246, 0.75);
+            background-color: rgba(240, 242, 246, 0.8);
             border-radius: 10px;
-        }}
-        [data-testid="stTabs"] {{
-            background-color: transparent;
         }}
         </style>
         """,
@@ -72,7 +83,6 @@ def set_background(image_data):
     )
 
 def get_google_calendar_service():
-    """Autentica e retorna o serviço do Google Calendar."""
     try:
         service_account_info = st.secrets["google_service_account"]
         if isinstance(service_account_info, str):
@@ -81,12 +91,10 @@ def get_google_calendar_service():
             service_account_info, scopes=SCOPES)
         return build('calendar', 'v3', credentials=creds)
     except Exception as e:
-        st.error(f"Erro ao autenticar com a conta de serviço: {e}")
+        st.error(f"Erro ao autenticar: {e}")
         return None
 
-
 def criar_evento_google_calendar(service, info_evento):
-    """Cria um evento no Google Calendar."""
     tz = pytz.timezone(TIMEZONE)
     data_hora_inicio_aware = tz.localize(info_evento['data_hora_inicio'])
     data_hora_fim_aware = tz.localize(info_evento['data_hora_fim'])
@@ -109,12 +117,10 @@ def criar_evento_google_calendar(service, info_evento):
         evento_criado = service.events().insert(calendarId=CALENDAR_ID, body=evento).execute()
         return evento_criado.get('htmlLink')
     except HttpError as error:
-        st.error(f"Erro na API do Google Calendar: {error}. Verifique se o CALENDAR_ID está correto e se a conta de serviço tem a permissão 'Fazer alterações nos eventos'.")
+        st.error(f"Erro na API do Google Calendar: {error}.")
         return None
 
-
 def enviar_mensagem_telegram_agendamento(cliente, data, hora, valor_total, valor_entrada, tipo_servico):
-    """Envia uma mensagem de confirmação para o Telegram."""
     mensagem = (
         f"📅 *Novo Agendamento Realizado!*\n\n"
         f"👤 *Cliente:* {cliente}\n"
@@ -130,11 +136,9 @@ def enviar_mensagem_telegram_agendamento(cliente, data, hora, valor_total, valor
     if response.status_code != 200:
         st.error(f"Erro ao enviar mensagem para o Telegram: {response.json()}")
     else:
-        st.success("📨 Mensagem de confirmação enviada para o grupo do Telegram!")
-
+        st.success("📨 Mensagem enviada para o grupo do Telegram!")
 
 def carregar_agendamentos_csv():
-    """Carrega os agendamentos do arquivo CSV, garantindo a coluna 'Status'."""
     if os.path.exists(ARQUIVO_CSV):
         df = pd.read_csv(ARQUIVO_CSV)
         if 'Status' not in df.columns:
@@ -142,9 +146,7 @@ def carregar_agendamentos_csv():
         return df
     return pd.DataFrame()
 
-
 def parse_google_events(events):
-    """Converte a lista de eventos do Google em um DataFrame do Pandas."""
     lista_eventos = []
     for event in events:
         start = event['start'].get('dateTime', event['start'].get('date'))
@@ -158,9 +160,7 @@ def parse_google_events(events):
         })
     return pd.DataFrame(lista_eventos)
 
-
 def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
-    """Puxa eventos futuros ou passados do Google Calendar."""
     try:
         now = datetime.now(pytz.timezone(TIMEZONE))
         params = {'calendarId': CALENDAR_ID, 'maxResults': 250, 'singleEvents': True, 'orderBy': 'startTime'}
@@ -172,43 +172,38 @@ def puxar_eventos_google_calendar(service, periodo="futuro", dias=90):
         events_result = service.events().list(**params).execute()
         return parse_google_events(events_result.get('items', []))
     except HttpError as error:
-        st.error(f"Erro ao buscar eventos do Google Calendar: {error}.")
+        st.error(f"Erro ao buscar eventos: {error}.")
         return pd.DataFrame()
-
 
 # --- App Streamlit ---
 st.set_page_config(page_title="Sistema de Agendamentos", layout="wide")
 
-# Lógica para usar imagem de fundo local ou online
 img_base64 = get_image_as_base64(NOME_ARQUIVO_FUNDO)
 if img_base64:
-    # Usa a imagem local convertida
     bg_image_data = f"data:image/jpg;base64,{img_base64}"
     set_background(bg_image_data)
 else:
-    # Usa uma URL padrão como fallback se a imagem local não for encontrada
-    st.warning(f"Arquivo '{NOME_ARQUIVO_FUNDO}' não encontrado. Usando imagem de fundo padrão.")
+    st.warning(f"'{NOME_ARQUIVO_FUNDO}' não encontrado. Usando fundo padrão.")
     BG_IMAGE_URL = "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1964&auto=format&fit=crop"
     set_background(BG_IMAGE_URL)
 
 st.title("📅 Sistema de Agendamento")
 
-# Inicializa o estado de sessão para a confirmação
 if 'confirming' not in st.session_state:
     st.session_state.confirming = {}
 
 service = get_google_calendar_service()
 
 if service:
-    lembrete_opcoes = {"15 minutos antes": 15, "30 minutos antes": 30, "1 hora antes": 60, "2 horas antes": 120, "1 dia antes": 1440}
+    lembrete_opcoes = {"15 min": 15, "30 min": 30, "1 hora": 60, "2 horas": 120, "1 dia": 1440}
     tab1, tab2 = st.tabs(["➕ Novo Agendamento", "📋 Consultar Agendamentos"])
 
     with tab1:
         st.subheader("Informações do Agendamento")
         cliente = st.text_input("👤 Nome do Cliente")
-        tipo_servico = st.text_input("🛠 Tipo de Serviço (ex: Sessão de Fotos)")
+        tipo_servico = st.text_input("🛠 Tipo de Serviço")
         local = st.text_input("📍 Local")
-        endereco = st.text_input("Endereço completo (opcional)")
+        endereco = st.text_input("Endereço (opcional)")
         st.markdown("---")
         metodo_termino = st.radio("Como definir o término?", ('Definir Duração', 'Manualmente'), horizontal=True)
         col1, col2 = st.columns(2)
@@ -229,9 +224,9 @@ if service:
                 data_hora_fim = dt_fim
         st.markdown("---")
         st.subheader("Lembretes e Finanças")
-        lembretes_selecionados = st.multiselect("🔔 Alertas:", list(lembrete_opcoes.keys()), default=["15 minutos antes"])
+        lembretes_selecionados = st.multiselect("🔔 Alertas:", list(lembrete_opcoes.keys()), default=["15 min"])
         valor_total = st.number_input("💰 Valor Total (R$)", min_value=0.0, value=100.0, step=10.0, format="%.2f")
-        entrada = st.checkbox("✅ Houve entrada de dinheiro?")
+        entrada = st.checkbox("✅ Houve entrada?")
         valor_entrada_input, forma_pagamento_input = 0.0, "Não houve entrada"
         if entrada:
             valor_entrada_input = st.number_input("💵 Valor da Entrada (R$)", min_value=0.0, max_value=valor_total, step=10.0, format="%.2f")
@@ -243,18 +238,18 @@ if service:
                 dados = {"cliente": cliente, "tipo_servico": tipo_servico, "local": local, "endereco": endereco, "data_hora_inicio": data_hora_inicio, "data_hora_fim": data_hora_fim, "valor_total": valor_total, "valor_entrada": valor_entrada_input if entrada else 0.0, "forma_pagamento": forma_pagamento_input if entrada else "Não houve entrada", "lembretes_minutos": [lembrete_opcoes[l] for l in lembretes_selecionados]}
                 with st.spinner("Criando evento..."): link_evento = criar_evento_google_calendar(service, dados)
                 if link_evento:
-                    st.success("✅ Agendamento criado com sucesso!")
+                    st.success("✅ Agendamento criado!")
                     st.markdown(f"[📅 Ver no Google Calendar]({link_evento})")
                     enviar_mensagem_telegram_agendamento(cliente, data_inicio, hora_inicio, valor_total, dados["valor_entrada"], tipo_servico)
                     linha = {"Data e Hora Início": data_hora_inicio.strftime("%Y-%m-%d %H:%M"), "Data e Hora Fim": data_hora_fim.strftime("%Y-%m-%d %H:%M"), "Cliente": cliente, "Serviço": tipo_servico, "Duração (min)": (data_hora_fim - data_hora_inicio).total_seconds()/60, "Local": local, "Endereço": endereco, "Valor Total": valor_total, "Entrada": dados["valor_entrada"], "Forma de Pagamento": dados["forma_pagamento"], "Link do Evento": link_evento, "Status": "Pendente"}
                     df_existente = carregar_agendamentos_csv()
                     df_novo = pd.concat([df_existente, pd.DataFrame([linha])], ignore_index=True)
                     df_novo.to_csv(ARQUIVO_CSV, index=False)
-            else: st.error("Verifique se todos os campos estão preenchidos e se as datas/horas são válidas.")
+            else: st.error("Preencha todos os campos e verifique as datas.")
 
     with tab2:
         st.header("🗓️ Seus Compromissos")
-        with st.expander("Visualizar Agendamentos do Google Calendar", expanded=True):
+        with st.expander("Agendamentos do Google Calendar", expanded=True):
             df_futuros = puxar_eventos_google_calendar(service, periodo="futuro")
             if not df_futuros.empty:
                 st.subheader("Próximo Agendamento")
@@ -264,9 +259,9 @@ if service:
                                 f"**🛠️ Serviço:** {proximo['Serviço']}\n"
                                 f"**🗓️ Data:** {proximo['Data e Hora Início'].strftime('%d/%m/%Y às %H:%M')}\n"
                                 f"**📍 Local:** {proximo['Local']}")
-                st.subheader("Todos os Agendamentos Futuros")
+                st.subheader("Agendamentos Futuros")
                 st.dataframe(df_futuros.assign(**{'Data e Hora Início': lambda df: df['Data e Hora Início'].dt.strftime('%d/%m/%Y %H:%M'), 'Data e Hora Fim': lambda df: df['Data e Hora Fim'].dt.strftime('%d/%m/%Y %H:%M')}), use_container_width=True, hide_index=True)
-            else: st.info("Nenhum agendamento futuro encontrado no Google Calendar.")
+            else: st.info("Nenhum agendamento futuro no Google Calendar.")
         
         st.markdown("---")
         st.header("✔️ Gerenciar Tarefas (Backup Local)")
@@ -304,11 +299,11 @@ if service:
 
             with st.expander("Ver Histórico de Tarefas Concluídas"):
                 if df_concluidos.empty:
-                    st.info("Nenhuma tarefa foi concluída ainda.")
+                    st.info("Nenhuma tarefa foi concluída.")
                 else:
                     st.dataframe(df_concluidos.sort_values(by='Data e Hora Início', ascending=False), use_container_width=True, hide_index=True)
         else:
-            st.info("Nenhum agendamento encontrado no arquivo de backup local.")
+            st.info("Nenhum agendamento no arquivo de backup.")
 else:
     st.warning("Falha na autenticação com Google Calendar.")
 
